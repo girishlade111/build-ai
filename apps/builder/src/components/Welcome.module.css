@@ -1,0 +1,336 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-hairline);
+}
+.wordmark {
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--color-ink);
+}
+.wordmark span {
+  color: var(--color-primary);
+}
+.provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-body);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-muted);
+}
+.main {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 72px 24px 48px;
+  box-sizing: border-box;
+}
+.kicker {
+  color: var(--color-muted);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0;
+}
+.title {
+  font-weight: 400;
+  font-size: clamp(30px, 5vw, 48px);
+  letter-spacing: -0.02em;
+  margin: 8px 0 24px;
+}
+.composer {
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+.composer:focus-within {
+  border-color: var(--color-ink);
+}
+.prompt {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 84px;
+  max-height: 50vh;
+  resize: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-ink);
+  outline: none;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+.modes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.mode {
+  position: relative;
+}
+.mode input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.mode span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+}
+.mode input:checked + span {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-canvas);
+}
+.mode input:focus-visible + span {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.submit {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.submit:hover:not(:disabled) {
+  background: var(--color-primary-active);
+}
+.submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.submit:focus-visible,
+.back:focus-visible,
+.wordmark:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+.status {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--color-ink);
+  min-height: 1.4em;
+}
+.note {
+  font-size: 14px;
+  color: var(--color-body);
+  margin: 16px 0 0;
+  line-height: 1.5;
+}
+.back {
+  display: inline-block;
+  margin-top: 24px;
+  color: var(--color-primary);
+  font-size: 14px;
+}
+.templates {
+  margin-top: 48px;
+}
+.sectionTitle {
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.templateList {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.template {
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  background: var(--color-surface-card);
+}
+.templateName {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+}
+.templateDesc {
+  font-size: 14px;
+  color: var(--color-body);
+  margin: 6px 0 12px;
+  line-height: 1.5;
+}
+.summary {
+  font-size: 14px;
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.summary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.fileList {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.fileList code {
+  font-family: var(--font-mono);
+}
+.secondary {
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 0 16px;
+  border: 1px solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.secondary:hover:not(:disabled) {
+  background: var(--color-ink);
+  color: var(--color-canvas);
+}
+.secondary:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.secondary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.error {
+  font-size: 14px;
+  color: var(--color-error, #b42318);
+  margin: 8px 0 0;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 640px) {
+  .main {
+    padding-top: 40px;
+  }
+  .submit {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page * {
+    transition: none !important;
+  }
+}
+.recentList {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-card);
+}
+.recentItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 0;
+}
+.recentItem + .recentItem {
+  border-top: 1px solid var(--color-hairline);
+}
+.recentLink {
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 16px;
+  color: var(--color-ink);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+}
+.recentLink:hover .templateName {
+  text-decoration: underline;
+}
+.recentLink:focus-visible,
+.recentRemove:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.recentLink .templateName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recentMeta {
+  font-size: 13px;
+  color: var(--color-body);
+}
+.recentRemove {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-body);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.recentRemove:hover:not(:disabled) {
+  color: var(--color-error, #b42318);
+}
