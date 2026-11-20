@@ -25,7 +25,7 @@ export function buildCsp(nonce: string, dev = false, previewOrigin: string | nul
     "object-src": ["'none'"],
     "base-uri": ["'none'"],
     "form-action": ["'self'"],
-    "frame-ancestors": ["'none'"],
+    ...(dev ? {} : { "frame-ancestors": ["'none'"] }),
     "manifest-src": ["'self'"],
   };
   const policy = Object.entries(directives).map(([k, v]) => `${k} ${v.join(" ")}`);
@@ -45,7 +45,6 @@ export const staticSecurityHeaders = [
   { key: "Referrer-Policy", value: "no-referrer" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
-  { key: "X-Frame-Options", value: "DENY" },
   {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",

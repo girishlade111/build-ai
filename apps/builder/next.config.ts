@@ -8,8 +8,25 @@ import { staticSecurityHeaders } from "./src/security/csp";
  */
 const nextConfig: NextConfig = {
   basePath: "/app",
+  output: "standalone",
   reactStrictMode: true,
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        source: "/",
+        destination: "/app",
+        basePath: false,
+        permanent: false,
+      },
+      {
+        source: "/:locale(ru|ja|ko|zh|tr|fr|pt)",
+        destination: "/app/:locale",
+        basePath: false,
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [{ source: "/:path*", headers: staticSecurityHeaders }];
   },

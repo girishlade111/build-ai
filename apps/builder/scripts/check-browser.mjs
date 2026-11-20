@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 
 const port = 3109;
 const base = `http://127.0.0.1:${port}/app`;
-const server = spawn("pnpm", ["exec", "next", "start", "--port", String(port)], {
+const server = spawn("npx", ["next", "start", "--port", String(port)], {
   stdio: "ignore",
 });
 const previewPort = 4322;

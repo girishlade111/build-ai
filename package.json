@@ -4,15 +4,21 @@
   "description": "LadeStack Build monorepo: Astro website (/) and Next.js builder (/app).",
   "license": "MIT",
   "type": "module",
-  "packageManager": "pnpm@9.15.9",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "dev:website": "pnpm --filter @ladestack/website dev",
-    "dev:builder": "pnpm --filter @ladestack/builder dev",
-    "build": "pnpm -r --if-present build",
-    "typecheck": "pnpm -r --if-present typecheck",
+    "dev": "npm run dev --workspace=apps/builder",
+    "start": "npm run start --workspace=apps/builder",
+    "dev:website": "npm run dev --workspace=apps/website",
+    "dev:builder": "npm run dev --workspace=apps/builder",
+    "build": "npm run build --workspace=apps/builder",
+    "build:all": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",

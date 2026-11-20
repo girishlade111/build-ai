@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "astro dev",
+    "dev": "astro dev --host 0.0.0.0 --port 3000",
     "build": "astro build",
     "preview": "astro preview",
     "typecheck": "astro check"
   },
   "dependencies": {
-    "@ladestack/design-tokens": "workspace:*",
-    "@ladestack/i18n": "workspace:*",
+    "@ladestack/design-tokens": "*",
+    "@ladestack/i18n": "*",
     "astro": "5.14.1"
   },
   "devDependencies": {

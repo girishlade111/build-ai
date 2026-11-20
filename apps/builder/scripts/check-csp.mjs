@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 const port = 3107;
 const base = `http://127.0.0.1:${port}/app`;
 const pages = ["", "/project?id=x", "/ru", "/pt/project?id=x"];
-const server = spawn("pnpm", ["exec", "next", "start", "--port", String(port)], {
+const server = spawn("npx", ["next", "start", "--port", String(port)], {
   stdio: "ignore",
 });
 
