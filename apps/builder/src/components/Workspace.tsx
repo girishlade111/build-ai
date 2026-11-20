@@ -2,10 +2,15 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { AgentPanel } from "./AgentPanel";
+import { CheckpointHistory } from "./CheckpointHistory";
+import { Preview } from "./Preview";
+import { PreviewController } from "../preview/controller";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { localePrefix, type Locale } from "@ladestack/i18n";
 import type { Project, ProjectFile } from "@ladestack/shared-types";
+import { settingsStrings } from "../i18n/settings";
 import { workspace } from "../i18n/workspace";
 import { getProjectStore } from "../storage/client";
 import { buildFileTree, defaultFile, type TreeNode } from "../workspace/fileTree";
@@ -17,7 +22,11 @@ const CodeEditor = dynamic(() => import("../editor/CodeEditor").then((m) => m.Co
   ssr: false,
 });
 
-type Load = { state: "loading" } | { state: "missing" } | { state: "ready"; project: Project };
+type Load =
+  | { state: "loading" }
+  | { state: "missing" }
+  | { state: "error" } // storage failed: not the same as a missing project (ERR-03)
+  | { state: "ready"; project: Project };
 type Save = "saved" | "dirty" | "saving" | "error" | "conflict";
 
 interface OpenFile {
@@ -33,19 +42,45 @@ export function Workspace({ locale }: { locale: Locale }) {
   const w = workspace[locale];
   const id = useSearchParams().get("id");
   const [load, setLoad] = useState<Load>({ state: "loading" });
+  const [attempt, setAttempt] = useState(0);
+  const [fileError, setFileError] = useState(false);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [open, setOpen] = useState<OpenFile | null>(null);
+  // The file the agent is writing right now, as it streams in (PRD: Monaco live streaming).
+  const [draft, setDraft] = useState<{ path: string; content: string } | null>(null);
+  const [follow, setFollow] = useState(true);
   const [save, setSave] = useState<Save>("saved");
+  // Reload the preview whenever the saved files change.
+  const [previewKey, setPreviewKey] = useState(0);
+  const previewController = useMemo(() => new PreviewController(), []);
+  const [agentRequest, setAgentRequest] = useState<
+    { id: number; mode: "debug"; prompt: string } | undefined
+  >();
+  useEffect(() => {
+    if (save === "saved") setPreviewKey((k) => k + 1);
+  }, [save, files]);
   const [view, setView] = useState<"code" | "preview">("code");
+  const [agentBusy, setAgentBusy] = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** True while an edit is waiting for its autosave. */
+  const pending = useRef(false);
   const openRef = useRef(open);
   openRef.current = open;
+  const saveRef = useRef(save);
+  saveRef.current = save;
 
   const openFile = useCallback(async (projectId: string, path: string) => {
-    const store = await getProjectStore();
-    const read = await store.readFile(projectId, path);
-    if (read) setOpen({ path, revision: read.file.revision, content: read.content });
-    setSave("saved");
+    try {
+      const store = await getProjectStore();
+      const read = await store.readFile(projectId, path);
+      if (read) setOpen({ path, revision: read.file.revision, content: read.content });
+      setSave("saved");
+      setFileError(false);
+    } catch {
+      // Keep whatever is on screen; nothing was written (ERR-02).
+      setFileError(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -67,16 +102,17 @@ export function Workspace({ locale }: { locale: Locale }) {
         const first = defaultFile(list.map((f) => f.path));
         if (first) await openFile(id, first);
       } catch {
-        if (!cancelled) setLoad({ state: "missing" });
+        if (!cancelled) setLoad({ state: "error" });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [id, openFile]);
+  }, [id, openFile, attempt]);
 
   const persist = useCallback(async () => {
     clearTimeout(timer.current);
+    pending.current = false;
     const current = openRef.current;
     if (!id || !current) return;
     setSave("saving");
@@ -98,6 +134,18 @@ export function Workspace({ locale }: { locale: Locale }) {
     }
   }, [id]);
 
+  // Leaving the workspace inside the app (home, settings) unmounts it: save what is pending first.
+  const persistRef = useRef(persist);
+  useEffect(() => {
+    persistRef.current = persist;
+  }, [persist]);
+  useEffect(
+    () => () => {
+      if (pending.current) void persistRef.current();
+    },
+    [],
+  );
+
   // Flush pending edits when the tab is hidden or closed.
   useEffect(() => {
     const flush = () => {
@@ -111,6 +159,7 @@ export function Workspace({ locale }: { locale: Locale }) {
     setOpen((o) => (o ? { ...o, content } : o));
     if (save === "conflict") return; // never autosave over a newer version
     setSave("dirty");
+    pending.current = true;
     clearTimeout(timer.current);
     timer.current = setTimeout(() => void persist(), autosaveDelayMs);
   }
@@ -124,6 +173,34 @@ export function Workspace({ locale }: { locale: Locale }) {
     if (save === "dirty") await persist();
     await openFile(id, path);
   }
+
+  /** The agent saved a file: refresh the tree, and the open file unless the user has unsaved edits. */
+  const agentWrote = useCallback(
+    async (path: string) => {
+      if (!id) return;
+      const store = await getProjectStore();
+      setFiles(await store.listFiles(id));
+      const current = openRef.current;
+      if (!current) await openFile(id, path);
+      else if (current.path === path && saveRef.current !== "dirty") await openFile(id, path);
+    },
+    [id, openFile],
+  );
+
+  /** Files were restored or deleted: reload the tree and the open file. */
+  const restored = useCallback(async () => {
+    if (!id) return;
+    const store = await getProjectStore();
+    const list = await store.listFiles(id);
+    setFiles(list);
+    const paths = list.map((f) => f.path);
+    const current = openRef.current?.path;
+    // Unsaved edits stay on screen; saving them later reports a conflict instead of overwriting.
+    if (current && saveRef.current === "dirty") return;
+    const next = current && paths.includes(current) ? current : defaultFile(paths);
+    if (next) await openFile(id, next);
+    else setOpen(null);
+  }, [id, openFile]);
 
   const [exporting, setExporting] = useState<"idle" | "busy" | "error">("idle");
 
@@ -146,8 +223,25 @@ export function Workspace({ locale }: { locale: Locale }) {
   if (load.state !== "ready") {
     return (
       <main className={styles.message}>
-        <p role="status">{load.state === "loading" ? w.loading : id ? w.notFound : w.missingId}</p>
-        {load.state === "missing" ? <Link href={home}>{w.back}</Link> : null}
+        {load.state === "error" ? (
+          <>
+            <p role="alert">{w.storageError}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setLoad({ state: "loading" });
+                setAttempt((n) => n + 1);
+              }}
+            >
+              {w.retry}
+            </button>
+          </>
+        ) : (
+          <p role="status">
+            {load.state === "loading" ? w.loading : id ? w.notFound : w.missingId}
+          </p>
+        )}
+        {load.state !== "loading" ? <Link href={home}>{w.back}</Link> : null}
       </main>
     );
   }
@@ -188,6 +282,16 @@ export function Workspace({ locale }: { locale: Locale }) {
         >
           {exporting === "busy" ? w.exporting : w.exportZip}
         </button>
+        <CheckpointHistory
+          locale={locale}
+          projectId={id!}
+          busy={agentBusy}
+          refreshKey={historyKey}
+          onRestored={() => void restored()}
+        />
+        <Link className={styles.settingsLink} href={`${localePrefix(locale)}/settings`}>
+          {settingsStrings[locale].link}
+        </Link>
         <p className={styles.saveState} role="status" data-state={save}>
           {save === "conflict" || save === "error" ? null : status[save]}
         </p>
@@ -195,6 +299,11 @@ export function Workspace({ locale }: { locale: Locale }) {
       {exporting === "error" ? (
         <p className={styles.alert} role="alert">
           {w.exportError}
+        </p>
+      ) : null}
+      {fileError ? (
+        <p className={styles.alert} role="alert">
+          {w.fileError}
         </p>
       ) : null}
       {save === "conflict" || save === "error" ? (
@@ -205,12 +314,25 @@ export function Workspace({ locale }: { locale: Locale }) {
               {w.reloadFile}
             </button>
           ) : null}
+          {save === "error" ? (
+            <button type="button" onClick={() => void persist()}>
+              {w.retrySave}
+            </button>
+          ) : null}
         </div>
       ) : null}
       {view === "code" ? (
         <div className={styles.code}>
           <nav className={styles.explorer} aria-label={w.files}>
             <p className={styles.explorerTitle}>{w.files}</p>
+            <label className={styles.follow}>
+              <input
+                type="checkbox"
+                checked={follow}
+                onChange={(e) => setFollow(e.target.checked)}
+              />
+              {w.followEdits}
+            </label>
             <Tree
               nodes={buildFileTree(files.map((f) => f.path))}
               active={open?.path}
@@ -218,7 +340,27 @@ export function Workspace({ locale }: { locale: Locale }) {
             />
           </nav>
           <section className={styles.editorPane}>
-            {open ? (
+            {draft && follow && save !== "dirty" ? (
+              <>
+                <p className={styles.breadcrumb}>
+                  {draft.path}
+                  <span className={styles.writing} role="status">
+                    {" "}
+                    · {w.agentWriting}
+                  </span>
+                </p>
+                <div className={styles.editor}>
+                  <CodeEditor
+                    path={draft.path}
+                    value={draft.content}
+                    loadingLabel={w.editorLoading}
+                    onChange={() => {}}
+                    onSave={() => {}}
+                    readOnly
+                  />
+                </div>
+              </>
+            ) : open ? (
               <>
                 <p className={styles.breadcrumb}>
                   {open.path}
@@ -239,11 +381,36 @@ export function Workspace({ locale }: { locale: Locale }) {
             )}
           </section>
         </div>
-      ) : (
-        <div className={styles.preview}>
-          <p>{w.previewUnavailable}</p>
-        </div>
-      )}
+      ) : null}
+      {/* Kept mounted while editing so the agent's check_preview can reload it. */}
+      <div className={view === "code" ? styles.hiddenPane : styles.previewWrap}>
+        <Preview
+          locale={locale}
+          projectId={id!}
+          paths={files.map((f) => f.path)}
+          refreshKey={previewKey}
+          controller={previewController}
+          onDebug={(prompt) =>
+            setAgentRequest((r) => ({ id: (r?.id ?? 0) + 1, mode: "debug", prompt }))
+          }
+        />
+      </div>
+      <AgentPanel
+        locale={locale}
+        projectId={id!}
+        onWrite={(p) => void agentWrote(p)}
+        onDraft={setDraft}
+        onFilesChanged={() => {
+          setHistoryKey((k) => k + 1);
+          void restored();
+        }}
+        request={agentRequest}
+        checkPreview={() => previewController.check()}
+        onRunningChange={(r) => {
+          setAgentBusy(r);
+          if (!r) setHistoryKey((k) => k + 1);
+        }}
+      />
     </div>
   );
 }

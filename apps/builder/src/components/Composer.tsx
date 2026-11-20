@@ -15,6 +15,26 @@ import {
 } from "../composer/draft";
 import type { ShellStrings } from "../i18n/shell";
 import styles from "./Welcome.module.css";
+import { localePrefix, type Locale } from "@ladestack/i18n";
+import { useRouter } from "next/navigation";
+import { projectNameFromPrompt, setPendingTask } from "../agent/handoff";
+import { workspace } from "../i18n/workspace";
+import { getProjectStore } from "../storage/client";
+import { askStrings } from "../i18n/ask";
+import { providerStrings, type ProviderStrings } from "../i18n/providers";
+import { providers } from "../providers/registry";
+import { checkAttachments } from "../providers/capability";
+import { getSession } from "../providers/session";
+import { useProviderSession } from "../providers/useProviderSession";
+import {
+  askSystemPrompt,
+  ProviderStreamError,
+  streamChat,
+  type StreamError,
+} from "../providers/stream";
+import { composeUserMessage } from "../attachments/attach";
+import { AttachButton, AttachmentList, useAttachments } from "./Attachments";
+import { RecoveryActions } from "./RecoveryActions";
 
 /** Mode names are product terms and stay in English; their hints are localized. */
 const modeNames: Record<AlphaMode, string> = {
@@ -24,11 +44,43 @@ const modeNames: Record<AlphaMode, string> = {
   debug: "Debug",
 };
 
-export function Composer({ s }: { s: ShellStrings }) {
+const streamErrorKey: Record<
+  Exclude<StreamError, "aborted" | "interrupted">,
+  keyof ProviderStrings
+> = {
+  "invalid-key": "invalidKey",
+  billing: "billing",
+  "rate-limit": "rateLimit",
+  unavailable: "unavailable",
+  network: "network",
+  timeout: "timeout",
+  unexpected: "unexpected",
+  "no-models": "noModels",
+  rejected: "rejected",
+};
+
+interface AskTurn {
+  question: string;
+  provider: string;
+  answer: string;
+  state: "waiting" | "streaming" | "done" | "stopped" | "interrupted" | "failed";
+  error?: string;
+  code?: StreamError;
+}
+
+export function Composer({ s, locale }: { s: ShellStrings; locale: Locale }) {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [loaded, setLoaded] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [turn, setTurn] = useState<AskTurn | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  const router = useRouter();
+  const w = workspace[locale];
+  const [creating, setCreating] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
+  const t = providerStrings[locale];
+  const a = askStrings[locale];
+  const busy = turn?.state === "waiting" || turn?.state === "streaming";
   const ids = { prompt: useId(), hint: useId(), status: useId() };
   const hints: Record<AlphaMode, string> = {
     code: s.hintCode,
@@ -37,6 +89,10 @@ export function Composer({ s }: { s: ShellStrings }) {
     debug: s.hintDebug,
   };
   const tooLong = draft.prompt.length > maxPromptLength;
+  const at = useAttachments(locale);
+  const attachments = at.attachments;
+  const current = useProviderSession();
+  const check = checkAttachments(current, attachments);
 
   // Restore the tab's draft after hydration so server and client render the same markup.
   useEffect(() => {
@@ -57,6 +113,8 @@ export function Composer({ s }: { s: ShellStrings }) {
     }
   }, [draft, loaded]);
 
+  useEffect(() => () => abort.current?.abort(), []);
+
   // Grow with the text, up to the CSS max-height.
   useEffect(() => {
     const el = textarea.current;
@@ -67,8 +125,88 @@ export function Composer({ s }: { s: ShellStrings }) {
 
   function submit() {
     if (!canSubmit(draft.prompt)) return;
-    // No provider adapter exists yet (BYOK lands in a later phase): send nothing, keep the draft.
-    setNotice(s.needProvider);
+    const session = getSession();
+    if (!session) {
+      setNotice(s.needProvider);
+      return;
+    }
+    // BYOK-01: a model known not to read these files gets nothing sent; the draft stays.
+    if (checkAttachments(session, attachments).blocked.length) return;
+    const name = providers[session.provider].name;
+    if (draft.mode === "code" || draft.mode === "plan") {
+      const m = composeUserMessage(draft.prompt.trim(), attachments);
+      void startProject(draft.mode, m.content, m.images);
+      return;
+    }
+    if (draft.mode !== "ask") {
+      // Debug needs an existing project: send nothing and keep the draft.
+      setNotice(t.debugInProject);
+      return;
+    }
+    if (busy) return;
+    void ask(session, name, draft.prompt.trim());
+  }
+
+  /** Code or Plan mode: a new empty local project, then the workspace agent picks up the prompt. */
+  async function startProject(
+    mode: "code" | "plan",
+    prompt: string,
+    images: { mediaType: string; data: string }[],
+  ) {
+    if (creating) return;
+    setCreating(true);
+    setNotice(w.creating);
+    try {
+      const store = await getProjectStore();
+      const project = await store.createProject({
+        name: projectNameFromPrompt(prompt),
+        profile: "react-vite",
+        files: {},
+      });
+      setPendingTask(project.id, { mode, prompt, images });
+      setDraft((d) => ({ ...d, prompt: "" }));
+      at.clear();
+      router.push(`${localePrefix(locale)}/project?id=${encodeURIComponent(project.id)}`);
+    } catch {
+      setNotice(w.createError);
+      setCreating(false);
+    }
+  }
+
+  async function ask(
+    session: NonNullable<ReturnType<typeof getSession>>,
+    name: string,
+    question: string,
+  ) {
+    setNotice(null);
+    const sent = attachments;
+    const controller = new AbortController();
+    abort.current = controller;
+    setTurn({ question, provider: name, answer: "", state: "waiting" });
+    let answer = "";
+    try {
+      for await (const text of streamChat({
+        provider: session.provider,
+        key: session.key,
+        model: session.model,
+        system: askSystemPrompt,
+        messages: [{ role: "user", ...composeUserMessage(question, sent) }],
+        signal: controller.signal,
+      })) {
+        answer += text;
+        setTurn((x) => x && { ...x, answer, state: "streaming" });
+      }
+      setTurn((x) => x && { ...x, state: "done" });
+      at.clear();
+      setDraft((d) => ({ ...d, prompt: "" })); // answered: clear the box for the next question
+    } catch (e) {
+      const code = e instanceof ProviderStreamError ? e.code : "unexpected";
+      if (code === "aborted") setTurn((x) => x && { ...x, state: "stopped" });
+      else if (code === "interrupted") setTurn((x) => x && { ...x, state: "interrupted" });
+      else setTurn((x) => x && { ...x, state: "failed", error: t[streamErrorKey[code]], code });
+    } finally {
+      if (abort.current === controller) abort.current = null;
+    }
   }
 
   function onSubmit(e: FormEvent) {
@@ -84,7 +222,7 @@ export function Composer({ s }: { s: ShellStrings }) {
   }
 
   return (
-    <form className={styles.composer} onSubmit={onSubmit} noValidate>
+    <form className={styles.composer} onSubmit={onSubmit} noValidate {...at.dropProps}>
       <label htmlFor={ids.prompt} className={styles.srOnly}>
         {s.composerLabel}
       </label>
@@ -103,6 +241,7 @@ export function Composer({ s }: { s: ShellStrings }) {
         }}
         onKeyDown={onKeyDown}
       />
+      <AttachmentList at={at} check={check} model={current?.model} />
       <div className={styles.row}>
         <fieldset className={styles.modes}>
           <legend className={styles.srOnly}>{s.modeLabel}</legend>
@@ -119,9 +258,20 @@ export function Composer({ s }: { s: ShellStrings }) {
             </label>
           ))}
         </fieldset>
-        <button type="submit" className={styles.submit} disabled={!canSubmit(draft.prompt)}>
-          {s.submit}
-        </button>
+        <AttachButton at={at} disabled={busy || creating} />
+        {busy ? (
+          <button type="button" className={styles.submit} onClick={() => abort.current?.abort()}>
+            {a.stop}
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className={styles.submit}
+            disabled={!canSubmit(draft.prompt) || creating}
+          >
+            {s.submit}
+          </button>
+        )}
       </div>
       <p id={ids.hint} className={styles.hint}>
         {hints[draft.mode]} · {s.shortcut}
@@ -129,6 +279,41 @@ export function Composer({ s }: { s: ShellStrings }) {
       <p id={ids.status} className={styles.status} role="status" aria-live="polite">
         {tooLong ? s.tooLong : notice}
       </p>
+      {turn ? (
+        <section
+          className={styles.answer}
+          aria-label={a.answer.replace("{provider}", turn.provider)}
+        >
+          <p className={styles.answerLabel}>{a.question}</p>
+          <p className={styles.answerQuestion}>{turn.question}</p>
+          <p className={styles.answerLabel}>{a.answer.replace("{provider}", turn.provider)}</p>
+          <div className={styles.answerText} aria-live="polite" aria-busy={busy}>
+            {turn.state === "waiting"
+              ? a.waiting.replace("{provider}", turn.provider)
+              : turn.answer}
+          </div>
+          {turn.state === "stopped" || turn.state === "interrupted" || turn.state === "failed" ? (
+            <p className={styles.answerError} role="alert">
+              {turn.state === "stopped"
+                ? a.stopped
+                : turn.state === "interrupted"
+                  ? a.interrupted
+                  : turn.error}
+              {turn.state !== "stopped" ? (
+                <RecoveryActions
+                  code={turn.code ?? "interrupted"}
+                  retry={submit}
+                  settings={`${localePrefix(locale)}/settings`}
+                  t={t}
+                  disabled={busy}
+                  className={styles.answerAction}
+                />
+              ) : null}
+            </p>
+          ) : null}
+          <p className={styles.answerNote}>{a.notSaved}</p>
+        </section>
+      ) : null}
     </form>
   );
 }

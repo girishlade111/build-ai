@@ -14,3 +14,28 @@ No runtime is chosen yet. The runtime is selected only after the R01–R15 bench
 ## Consequences
 
 Avoids locking into an unlicensed or unproven runtime.
+
+## Addendum (2026-10-26): benchmark harness
+
+`apps/builder/src/runtime/benchmark.ts` runs R01–R06 and R11–R12 through the `RuntimeAdapter`
+contract (ADR 0017) on fixtures F0 (static) and F1 (React + TS + Vite + Tailwind, 50–200 files),
+marks what a runtime does not offer as `unsupported`, and leaves browser-only scenarios (R13–R15,
+plus R07–R10 for runtimes with processes) as `manual`. Hard gates R02, R11, R15 and the licence
+block selection unless proven. First results: `docs/benchmarks/runtime-contract-2026-10-26.md`.
+No Node runtime candidate has been benchmarked yet; the decision above still stands.
+
+## Addendum (2026-10-26): candidate licence review
+
+Desk review in `docs/research/runtime-candidates-2026-10.md`. On paper, almostnode (MIT) is the
+first candidate worth an adapter; WebContainers needs a written answer from StackBlitz; Lifo needs
+a LICENSE file; Wasmer SDK is not an npm/Vite runtime; Nodebox's Sustainable Use License excludes
+it without legal sign-off. No runtime is selected.
+
+## Addendum (2026-10-26): almostnode contract benchmark
+
+`apps/builder/src/runtime/almostnode.ts` adapts almostnode 0.2.14 (injected, not a dependency).
+Evidence in `docs/benchmarks/almostnode-2026-10-26.md`: R01, R02, R05, R11, R12 pass, but npm
+install of fixture F1 fails (resolver bug on an `=x.y.z` range under `@vitejs/plugin-react`), its
+dev server is a Vite emulation without plugins, and preview/isolation are not yet tested in a
+browser. almostnode is not selected; it would need an upstream resolver fix and a preview-origin
+integration before a browser run.

@@ -1,0 +1,240 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Locale } from "@ladestack/i18n";
+import { workspace } from "../i18n/workspace";
+import {
+  appendLog,
+  debugPromptFromLogs,
+  parsePreviewLog,
+  type PreviewLog,
+} from "../preview/console";
+import type { PreviewController } from "../preview/controller";
+import { newPreviewSession, previewKind, previewMessages, previewPageUrl } from "../preview/files";
+import { previewOrigin } from "../preview/origin";
+import {
+  loadViewport,
+  saveViewport,
+  type Viewport,
+  viewportWidth,
+  viewports,
+} from "../preview/viewport";
+import { getProjectStore } from "../storage/client";
+import styles from "./Workspace.module.css";
+
+/**
+ * Project preview (ADR 0016). Plain HTML/CSS/JS projects run on the isolated preview origin in a
+ * sandboxed frame; files are sent with postMessage to that origin only. Projects with a
+ * package.json need the runtime, which is a later unit.
+ */
+export function Preview({
+  locale,
+  projectId,
+  paths,
+  refreshKey,
+  onDebug,
+  controller,
+}: {
+  locale: Locale;
+  projectId: string;
+  paths: string[];
+  /** Changes whenever saved files change, so the preview reloads. */
+  refreshKey: number;
+  /** Starts a Debug-mode run with this task (built from the console's errors). */
+  onDebug?: (prompt: string) => void;
+  /** Lets the agent reload this preview and read its console (check_preview). */
+  controller?: PreviewController;
+}) {
+  const w = workspace[locale];
+  const kind = previewKind(paths);
+  const frame = useRef<HTMLIFrameElement>(null);
+  const session = useMemo(() => newPreviewSession(), []);
+  const [ready, setReady] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [frameKey, setFrameKey] = useState(0);
+  const [logs, setLogs] = useState<PreviewLog[]>([]);
+  const [reloadNonce, setReloadNonce] = useState(0);
+  const [viewport, setViewport] = useState<Viewport>("desktop");
+  useEffect(() => setViewport(loadViewport(window.sessionStorage)), []);
+  const control = useRef(controller);
+  control.current = controller;
+
+  // Tell the agent's check_preview what this preview can do, in words for the model.
+  useEffect(() => {
+    const c = control.current;
+    if (!c) return;
+    if (!previewOrigin)
+      c.attach(
+        {
+          ok: false,
+          reason: "Preview is not set up on this deployment, so nothing can be checked.",
+        },
+        null,
+      );
+    else if (kind === "no-entry")
+      c.attach(
+        {
+          ok: false,
+          reason: "There is no index.html at the project root, so there is nothing to preview.",
+        },
+        null,
+      );
+    else c.attach({ ok: true }, () => setReloadNonce((n) => n + 1));
+    return () => c.detach();
+  }, [kind]);
+
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (!previewOrigin || e.origin !== previewOrigin) return;
+      if (e.source !== frame.current?.contentWindow) return;
+      if (e.data?.type === previewMessages.ready) setReady(true);
+      if (e.data?.type === previewMessages.loaded) {
+        setLoaded(true);
+        control.current?.loaded();
+      }
+      const log = parsePreviewLog(e.data);
+      if (log) {
+        setLogs((l) => appendLog(l, log));
+        control.current?.log(log);
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !previewOrigin || kind === "no-entry") return;
+    let cancelled = false;
+    void (async () => {
+      const store = await getProjectStore();
+      const all = await store.readAllFiles(projectId);
+      if (cancelled) return;
+      const files = Object.fromEntries(all.map((f) => [f.path, f.content]));
+      setLogs([]); // each load starts a fresh console
+      control.current?.filesSent();
+      frame.current?.contentWindow?.postMessage(
+        { type: previewMessages.files, session, files },
+        previewOrigin!,
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, refreshKey, reloadNonce, kind, projectId, session]);
+
+  const errors = logs.filter((l) => l.level === "error" || l.level === "warn").length;
+  const debugPrompt = debugPromptFromLogs(w.consoleDebugPrompt, logs);
+
+  if (!previewOrigin) return <Notice text={w.previewOff} />;
+  if (kind === "no-entry") return <Notice text={w.previewNoEntry} />;
+
+  return (
+    <div className={styles.previewPane}>
+      <div className={styles.previewBar}>
+        {loaded ? null : <span role="status">{w.previewLoading}</span>}
+        {kind === "bundle" ? (
+          <span className={styles.previewNote}>{w.previewBundleNote}</span>
+        ) : null}
+        <div className={styles.viewports} role="group" aria-label={w.viewportLabel}>
+          {viewports.map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={viewport === v}
+              onClick={() => {
+                setViewport(v);
+                saveViewport(typeof window === "undefined" ? undefined : window.sessionStorage, v);
+              }}
+            >
+              {
+                { desktop: w.viewportDesktop, tablet: w.viewportTablet, mobile: w.viewportMobile }[
+                  v
+                ]
+              }
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className={styles.exportButton}
+          disabled={!loaded}
+          title={w.openPreviewTabHint}
+          onClick={() =>
+            window.open(
+              previewPageUrl(previewOrigin ?? "", session),
+              "_blank",
+              "noopener,noreferrer",
+            )
+          }
+        >
+          {w.openPreviewTab}
+        </button>
+        <button
+          type="button"
+          className={styles.exportButton}
+          onClick={() => {
+            setReady(false);
+            setLoaded(false);
+            setFrameKey((k) => k + 1);
+          }}
+        >
+          {w.reloadPreview}
+        </button>
+      </div>
+      <div className={styles.frameStage}>
+        <iframe
+          key={frameKey}
+          ref={frame}
+          className={styles.previewFrame}
+          title={w.previewFrame}
+          src={`${previewOrigin}/`}
+          // Cross-origin, so allow-same-origin only gives the preview its own origin's storage.
+          sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+          referrerPolicy="no-referrer"
+          style={{ width: viewportWidth[viewport] }}
+        />
+      </div>
+      <details className={styles.console}>
+        <summary>
+          {w.console} ({logs.length})
+          {errors > 0 ? <span className={styles.consoleErrors}> · {errors}</span> : null}
+        </summary>
+        {logs.length === 0 ? (
+          <p className={styles.consoleEmpty}>{w.consoleEmpty}</p>
+        ) : (
+          <ol className={styles.consoleList}>
+            {logs.map((l, i) => (
+              <li key={i} className={styles[`log_${l.level}`]}>
+                <span className={styles.logLevel}>{l.level}</span>
+                <pre>{l.text}</pre>
+                {l.where ? <span className={styles.logWhere}>{l.where}</span> : null}
+              </li>
+            ))}
+          </ol>
+        )}
+        <div className={styles.consoleActions}>
+          {debugPrompt && onDebug ? (
+            <button
+              type="button"
+              className={styles.exportButton}
+              onClick={() => onDebug(debugPrompt)}
+            >
+              {w.debugErrors}
+            </button>
+          ) : null}
+          <button type="button" className={styles.exportButton} onClick={() => setLogs([])}>
+            {w.consoleClear}
+          </button>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function Notice({ text }: { text: string }) {
+  return (
+    <div className={styles.preview}>
+      <p>{text}</p>
+    </div>
+  );
+}

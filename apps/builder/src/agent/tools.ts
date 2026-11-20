@@ -1,0 +1,257 @@
+import { isSafeProjectPath } from "../templates/validate";
+
+/** Tools the agent may call (PRD A.15). No terminal or install yet. */
+export interface ToolSpec {
+  name: ToolName;
+  description: string;
+  /** JSON Schema for the arguments; `null` when the tool takes none. */
+  parameters: { type: "object"; properties: Record<string, unknown>; required: string[] } | null;
+}
+
+export const toolNames = [
+  "list_files",
+  "read_file",
+  "write_file",
+  "delete_file",
+  "check_preview",
+] as const;
+export type ToolName = (typeof toolNames)[number];
+
+export const agentTools: ToolSpec[] = [
+  {
+    name: "list_files",
+    description: "List every file in the project with its size in bytes.",
+    parameters: null,
+  },
+  {
+    name: "read_file",
+    description: "Read a project file as UTF-8 text.",
+    parameters: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Project-relative path, e.g. src/App.tsx" },
+      },
+      required: ["path"],
+    },
+  },
+  {
+    name: "write_file",
+    description:
+      "Create a file or replace its whole content. Always send the complete file, never a fragment or diff.",
+    parameters: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Project-relative path, e.g. src/App.tsx" },
+        content: { type: "string", description: "The complete new file content." },
+      },
+      required: ["path", "content"],
+    },
+  },
+  {
+    name: "delete_file",
+    description:
+      "Delete a project file. The user is asked to approve every deletion and may decline; if declined, do not retry.",
+    parameters: {
+      type: "object",
+      properties: { path: { type: "string", description: "Project-relative path to delete" } },
+      required: ["path"],
+    },
+  },
+  {
+    name: "check_preview",
+    description:
+      "Load the project's saved files in the live preview and return what the page's console reported after it settled: errors, warnings, logs and files that failed to load. Use it after writing files to check your work. Projects with package.json are bundled in the browser (packages from esm.sh) and build errors are reported too.",
+    parameters: null,
+  },
+];
+
+/**
+ * Agent modes with a permission contract (PRD MODE-01). Plan and Debug are read-only: Debug edits
+ * only through the user's explicit "Apply this fix", which starts a Code run.
+ */
+export type AgentMode = "code" | "plan" | "debug";
+
+const modeTools: Record<AgentMode, readonly ToolName[]> = {
+  code: toolNames,
+  plan: ["list_files", "read_file"],
+  debug: ["list_files", "read_file", "check_preview"],
+};
+
+const modeLabel: Record<AgentMode, string> = { code: "Code", plan: "Plan", debug: "Debug" };
+
+/** The tool specs a mode may offer the model. */
+export function toolsForMode(mode: AgentMode): ToolSpec[] {
+  return agentTools.filter((t) => modeTools[mode].includes(t.name as ToolName));
+}
+
+/** An action that needs the user's explicit Allow once (Balanced profile, ADR 0003). */
+export interface ApprovalRequest {
+  tool: "delete_file";
+  path: string;
+}
+
+export interface ToolContext {
+  /** Defaults to "code". Enforced here, not by the prompt (PRD AS-04). */
+  mode?: AgentMode;
+  /** Resolves true only on an explicit allow. Missing, aborted or silent means denied. */
+  approve?: (request: ApprovalRequest) => Promise<boolean>;
+  /** Reloads the live preview and reports its console; missing means no preview here. */
+  /** `ok: false` when the preview could not be checked (runtime failure, reported as an error). */
+  checkPreview?: () => Promise<{ ok: boolean; report: string }>;
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  args: unknown;
+}
+
+export interface ToolResult {
+  call: ToolCall;
+  output: string;
+  isError: boolean;
+  /** For the activity log: which file a read/write touched. */
+  path?: string;
+  /** The user said no to an approval. */
+  declined?: boolean;
+}
+
+/** The storage the agent works through; satisfied by ProjectStore. */
+export interface AgentFs {
+  listFiles(projectId: string): Promise<{ path: string; size: number; revision: string }[]>;
+  readFile(
+    projectId: string,
+    path: string,
+  ): Promise<{ file: { revision: string }; content: string } | undefined>;
+  writeFile(
+    projectId: string,
+    path: string,
+    content: string,
+    baseRevision: string | null,
+  ): Promise<{ ok: true } | { ok: false; reason: string }>;
+  deleteFile(
+    projectId: string,
+    path: string,
+    baseRevision: string,
+  ): Promise<{ ok: true } | { ok: false; reason: string }>;
+}
+
+export const maxWriteBytes = 2 * 1024 * 1024; // same per-file cap as ZIP import
+export const maxProjectFiles = 2000;
+const maxReadChars = 200_000;
+
+const byteLength = (s: string) => new TextEncoder().encode(s).length;
+const fail = (call: ToolCall, output: string, path?: string): ToolResult => ({
+  call,
+  output,
+  isError: true,
+  path,
+});
+
+function stringArg(args: unknown, key: string): string | undefined {
+  const v = (args as Record<string, unknown> | null)?.[key];
+  return typeof v === "string" ? v : undefined;
+}
+
+/**
+ * Runs one validated tool call against the project. Every argument is checked here, in app
+ * code, never trusted from the model (PRD: permissions enforced by code, not prompts).
+ */
+export async function runTool(
+  fs: AgentFs,
+  projectId: string,
+  call: ToolCall,
+  ctx: ToolContext = {},
+): Promise<ToolResult> {
+  const mode = ctx.mode ?? "code";
+  if (
+    (toolNames as readonly string[]).includes(call.name) &&
+    !modeTools[mode].includes(call.name as ToolName)
+  )
+    return fail(
+      call,
+      `${call.name} is not allowed in ${modeLabel[mode]} mode, which is read-only. Describe the change in your reply instead; the user can switch to Code mode to make it.`,
+      stringArg(call.args, "path"),
+    );
+  switch (call.name) {
+    case "list_files": {
+      const files = await fs.listFiles(projectId);
+      const output = files.length
+        ? files.map((f) => `${f.path} (${f.size} bytes)`).join("\n")
+        : "(no files)";
+      return { call, output, isError: false };
+    }
+    case "read_file": {
+      const path = stringArg(call.args, "path");
+      if (!path || !isSafeProjectPath(path)) return fail(call, "Invalid path.", path);
+      const read = await fs.readFile(projectId, path);
+      if (!read) return fail(call, `File not found: ${path}`, path);
+      const output =
+        read.content.length > maxReadChars
+          ? `${read.content.slice(0, maxReadChars)}\n[truncated: file is ${read.content.length} characters]`
+          : read.content;
+      return { call, output, isError: false, path };
+    }
+    case "write_file": {
+      const path = stringArg(call.args, "path");
+      const content = stringArg(call.args, "content");
+      if (!path || !isSafeProjectPath(path))
+        return fail(
+          call,
+          "Invalid path. Use a relative path; secrets files, .git and node_modules are not allowed.",
+          path,
+        );
+      if (content === undefined) return fail(call, "Missing content.", path);
+      if (content.includes("\0")) return fail(call, "Binary content is not allowed.", path);
+      if (byteLength(content) > maxWriteBytes) return fail(call, "File is larger than 2 MB.", path);
+      const existing = await fs.readFile(projectId, path);
+      if (!existing && (await fs.listFiles(projectId)).length >= maxProjectFiles)
+        return fail(call, `Project already has ${maxProjectFiles} files.`, path);
+      if (existing?.content === content)
+        return { call, output: `Unchanged: ${path}`, isError: false, path };
+      const result = await fs.writeFile(projectId, path, content, existing?.file.revision ?? null);
+      if (!result.ok)
+        return fail(
+          call,
+          result.reason === "conflict"
+            ? "The file changed while writing. Read it again, then retry."
+            : "Write failed.",
+          path,
+        );
+      return { call, output: `${existing ? "Updated" : "Created"} ${path}`, isError: false, path };
+    }
+    case "delete_file": {
+      const path = stringArg(call.args, "path");
+      if (!path || !isSafeProjectPath(path)) return fail(call, "Invalid path.", path);
+      if (!(await fs.readFile(projectId, path))) return fail(call, `File not found: ${path}`, path);
+      let allowed = false;
+      try {
+        allowed = (await ctx.approve?.({ tool: "delete_file", path })) === true;
+      } catch {
+        allowed = false;
+      }
+      if (!allowed)
+        return {
+          call,
+          output: `The user declined deleting ${path}. Do not retry.`,
+          isError: true,
+          path,
+          declined: true,
+        };
+      // Re-read after approval: the file may have changed while the user was deciding.
+      const current = await fs.readFile(projectId, path);
+      if (!current) return fail(call, `File not found: ${path}`, path);
+      const result = await fs.deleteFile(projectId, path, current.file.revision);
+      if (!result.ok)
+        return fail(call, "The file changed while deleting. Read it again first.", path);
+      return { call, output: `Deleted ${path}`, isError: false, path };
+    }
+    case "check_preview": {
+      if (!ctx.checkPreview) return fail(call, "The preview is not available here.");
+      const r = await ctx.checkPreview();
+      return { call, output: r.report, isError: !r.ok };
+    }
+    default:
+      return fail(call, `Unknown tool: ${call.name}`);
+  }
+}

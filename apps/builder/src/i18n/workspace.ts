@@ -8,10 +8,14 @@ export interface WorkspaceStrings {
   loading: string;
   missingId: string;
   notFound: string;
+  storageError: string;
+  retry: string;
+  fileError: string;
+  retrySave: string;
   files: string;
   code: string;
   preview: string;
-  previewUnavailable: string;
+  previewBundleNote: string;
   selectFile: string;
   saved: string;
   unsaved: string;
@@ -25,6 +29,24 @@ export interface WorkspaceStrings {
   exportZip: string;
   exporting: string;
   exportError: string;
+  followEdits: string;
+  agentWriting: string;
+  previewOff: string;
+  previewNoEntry: string;
+  previewLoading: string;
+  previewFrame: string;
+  reloadPreview: string;
+  openPreviewTab: string;
+  openPreviewTabHint: string;
+  viewportLabel: string;
+  viewportDesktop: string;
+  viewportTablet: string;
+  viewportMobile: string;
+  console: string;
+  consoleEmpty: string;
+  consoleClear: string;
+  debugErrors: string;
+  consoleDebugPrompt: string;
 }
 
 export const workspace: Record<Locale, WorkspaceStrings> = {
@@ -37,11 +59,15 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     missingId: "No project was specified.",
     notFound:
       "This project isn't in this browser. Projects are stored only on the device and browser where they were created.",
+    storageError: "Couldn't open this browser's local storage. Your files have not been changed.",
+    retry: "Try again",
+    fileError: "Couldn't open this file. The saved copy is unchanged.",
+    retrySave: "Try saving again",
     files: "Files",
     code: "Code",
     preview: "Preview",
-    previewUnavailable:
-      "Preview needs the project runtime, which isn't built yet. Your files are saved and ready.",
+    previewBundleNote:
+      "Experimental: your code is bundled in the browser and npm packages load from esm.sh. There is no npm install or dev server yet.",
     selectFile: "Select a file to edit.",
     saved: "Saved",
     unsaved: "Unsaved changes",
@@ -56,6 +82,25 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     exportZip: "Export ZIP",
     exporting: "Exporting…",
     exportError: "Export failed. Your files are still saved in this browser.",
+    followEdits: "Follow AI edits",
+    agentWriting: "Agent is writing…",
+    previewOff: "Preview isn't set up on this deployment yet. Your files are saved and ready.",
+    previewNoEntry: "Add an index.html at the top of the project to preview it.",
+    previewLoading: "Loading preview…",
+    previewFrame: "Preview of your project",
+    reloadPreview: "Reload preview",
+    openPreviewTab: "Open in new tab",
+    openPreviewTabHint:
+      "Opens the preview on its own. Reload that tab after saving to see changes.",
+    viewportLabel: "Preview size",
+    viewportDesktop: "Desktop",
+    viewportTablet: "Tablet",
+    viewportMobile: "Mobile",
+    console: "Console",
+    consoleEmpty: "No console messages yet.",
+    consoleClear: "Clear",
+    debugErrors: "Debug these errors",
+    consoleDebugPrompt: "Find the cause of these errors from the project preview:",
   },
   ru: {
     useTemplate: "Использовать шаблон",
@@ -66,11 +111,15 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     missingId: "Проект не указан.",
     notFound:
       "Этого проекта нет в этом браузере. Проекты хранятся только на том устройстве и в том браузере, где они созданы.",
+    storageError: "Не удалось открыть локальное хранилище браузера. Ваши файлы не изменены.",
+    retry: "Повторить",
+    fileError: "Не удалось открыть файл. Сохранённая копия не изменена.",
+    retrySave: "Сохранить ещё раз",
     files: "Файлы",
     code: "Код",
     preview: "Превью",
-    previewUnavailable:
-      "Для превью нужна среда выполнения проекта, она ещё в разработке. Ваши файлы сохранены и готовы.",
+    previewBundleNote:
+      "Экспериментально: код собирается в браузере, а npm-пакеты загружаются с esm.sh. npm install и dev-сервера пока нет.",
     selectFile: "Выберите файл для редактирования.",
     saved: "Сохранено",
     unsaved: "Есть несохранённые изменения",
@@ -85,6 +134,25 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     exportZip: "Экспорт ZIP",
     exporting: "Экспорт…",
     exportError: "Не удалось экспортировать. Файлы по-прежнему сохранены в этом браузере.",
+    followEdits: "Следить за правками ИИ",
+    agentWriting: "Агент пишет…",
+    previewOff: "Предпросмотр на этом развёртывании ещё не настроен. Файлы сохранены и готовы.",
+    previewNoEntry: "Добавьте index.html в корень проекта, чтобы увидеть предпросмотр.",
+    previewLoading: "Загрузка предпросмотра…",
+    previewFrame: "Предпросмотр вашего проекта",
+    reloadPreview: "Обновить предпросмотр",
+    openPreviewTab: "Открыть в новой вкладке",
+    openPreviewTabHint:
+      "Открывает предпросмотр отдельно. Обновите ту вкладку после сохранения, чтобы увидеть изменения.",
+    viewportLabel: "Размер предпросмотра",
+    viewportDesktop: "Компьютер",
+    viewportTablet: "Планшет",
+    viewportMobile: "Телефон",
+    console: "Консоль",
+    consoleEmpty: "Сообщений в консоли пока нет.",
+    consoleClear: "Очистить",
+    debugErrors: "Найти причину ошибок",
+    consoleDebugPrompt: "Найди причину этих ошибок из предпросмотра проекта:",
   },
   ja: {
     useTemplate: "このテンプレートを使う",
@@ -95,11 +163,16 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     missingId: "プロジェクトが指定されていません。",
     notFound:
       "このプロジェクトはこのブラウザにありません。プロジェクトは作成したデバイスとブラウザにのみ保存されます。",
+    storageError:
+      "このブラウザーのローカルストレージを開けませんでした。ファイルは変更されていません。",
+    retry: "再試行",
+    fileError: "このファイルを開けませんでした。保存済みの内容は変更されていません。",
+    retrySave: "もう一度保存",
     files: "ファイル",
     code: "コード",
     preview: "プレビュー",
-    previewUnavailable:
-      "プレビューにはプロジェクトの実行環境が必要ですが、まだ開発中です。ファイルは保存済みで準備ができています。",
+    previewBundleNote:
+      "試験的機能：コードはブラウザ内でバンドルされ、npm パッケージは esm.sh から読み込まれます。npm install や開発サーバーはまだありません。",
     selectFile: "編集するファイルを選んでください。",
     saved: "保存済み",
     unsaved: "未保存の変更があります",
@@ -114,6 +187,25 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     exportZip: "ZIPでエクスポート",
     exporting: "エクスポート中…",
     exportError: "エクスポートに失敗しました。ファイルはこのブラウザに保存されたままです。",
+    followEdits: "AI の編集を追跡",
+    agentWriting: "エージェントが書き込み中…",
+    previewOff: "このデプロイではプレビューがまだ設定されていません。ファイルは保存済みです。",
+    previewNoEntry: "プレビューするには、プロジェクトの最上位に index.html を追加してください。",
+    previewLoading: "プレビューを読み込み中…",
+    previewFrame: "プロジェクトのプレビュー",
+    reloadPreview: "プレビューを再読み込み",
+    openPreviewTab: "新しいタブで開く",
+    openPreviewTabHint:
+      "プレビューを単独で開きます。保存後にそのタブを再読み込みすると変更が表示されます。",
+    viewportLabel: "プレビューのサイズ",
+    viewportDesktop: "デスクトップ",
+    viewportTablet: "タブレット",
+    viewportMobile: "モバイル",
+    console: "コンソール",
+    consoleEmpty: "コンソールのメッセージはまだありません。",
+    consoleClear: "クリア",
+    debugErrors: "これらのエラーをデバッグ",
+    consoleDebugPrompt: "プロジェクトのプレビューで出た次のエラーの原因を見つけてください:",
   },
   ko: {
     useTemplate: "이 템플릿 사용",
@@ -124,11 +216,15 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     missingId: "지정된 프로젝트가 없습니다.",
     notFound:
       "이 프로젝트는 이 브라우저에 없습니다. 프로젝트는 만든 기기와 브라우저에만 저장됩니다.",
+    storageError: "이 브라우저의 로컬 저장소를 열지 못했습니다. 파일은 변경되지 않았습니다.",
+    retry: "다시 시도",
+    fileError: "이 파일을 열지 못했습니다. 저장된 사본은 변경되지 않았습니다.",
+    retrySave: "다시 저장",
     files: "파일",
     code: "코드",
     preview: "미리보기",
-    previewUnavailable:
-      "미리보기에는 프로젝트 런타임이 필요하며 아직 개발 중입니다. 파일은 저장되어 준비되었습니다.",
+    previewBundleNote:
+      "실험 기능: 코드는 브라우저에서 번들되고 npm 패키지는 esm.sh에서 불러옵니다. 아직 npm install이나 개발 서버는 없습니다.",
     selectFile: "편집할 파일을 선택하세요.",
     saved: "저장됨",
     unsaved: "저장되지 않은 변경 사항",
@@ -143,6 +239,25 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     exportZip: "ZIP 내보내기",
     exporting: "내보내는 중…",
     exportError: "내보내기에 실패했습니다. 파일은 이 브라우저에 그대로 저장되어 있습니다.",
+    followEdits: "AI 편집 따라가기",
+    agentWriting: "에이전트가 작성 중…",
+    previewOff: "이 배포에는 아직 미리보기가 설정되지 않았습니다. 파일은 저장되어 있습니다.",
+    previewNoEntry: "미리보려면 프로젝트 최상위에 index.html을 추가하세요.",
+    previewLoading: "미리보기 불러오는 중…",
+    previewFrame: "프로젝트 미리보기",
+    reloadPreview: "미리보기 새로고침",
+    openPreviewTab: "새 탭에서 열기",
+    openPreviewTabHint:
+      "미리보기를 따로 엽니다. 저장한 뒤 그 탭을 새로고침하면 변경 사항이 보입니다.",
+    viewportLabel: "미리보기 크기",
+    viewportDesktop: "데스크톱",
+    viewportTablet: "태블릿",
+    viewportMobile: "모바일",
+    console: "콘솔",
+    consoleEmpty: "아직 콘솔 메시지가 없습니다.",
+    consoleClear: "지우기",
+    debugErrors: "이 오류 디버그",
+    consoleDebugPrompt: "프로젝트 미리보기에서 나온 다음 오류의 원인을 찾아 주세요:",
   },
   zh: {
     useTemplate: "使用此模板",
@@ -151,10 +266,15 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     loading: "正在打开项目…",
     missingId: "未指定项目。",
     notFound: "此浏览器中没有这个项目。项目只保存在创建它的设备和浏览器中。",
+    storageError: "无法打开此浏览器的本地存储。你的文件没有被更改。",
+    retry: "重试",
+    fileError: "无法打开此文件。已保存的副本没有变化。",
+    retrySave: "再次保存",
     files: "文件",
     code: "代码",
     preview: "预览",
-    previewUnavailable: "预览需要项目运行环境,目前仍在开发中。你的文件已保存,随时可用。",
+    previewBundleNote:
+      "实验功能:代码在浏览器中打包,npm 包从 esm.sh 加载。目前还没有 npm install 或开发服务器。",
     selectFile: "选择要编辑的文件。",
     saved: "已保存",
     unsaved: "有未保存的更改",
@@ -168,6 +288,24 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     exportZip: "导出 ZIP",
     exporting: "正在导出…",
     exportError: "导出失败。你的文件仍保存在此浏览器中。",
+    followEdits: "跟随 AI 编辑",
+    agentWriting: "智能体正在写入…",
+    previewOff: "此部署尚未设置预览。你的文件已保存。",
+    previewNoEntry: "在项目根目录添加 index.html 即可预览。",
+    previewLoading: "正在加载预览…",
+    previewFrame: "你的项目预览",
+    reloadPreview: "重新加载预览",
+    openPreviewTab: "在新标签页中打开",
+    openPreviewTabHint: "单独打开预览。保存后刷新该标签页即可看到更改。",
+    viewportLabel: "预览尺寸",
+    viewportDesktop: "桌面",
+    viewportTablet: "平板",
+    viewportMobile: "手机",
+    console: "控制台",
+    consoleEmpty: "暂无控制台消息。",
+    consoleClear: "清除",
+    debugErrors: "调试这些错误",
+    consoleDebugPrompt: "找出项目预览中这些错误的原因:",
   },
   tr: {
     useTemplate: "Bu şablonu kullan",
@@ -178,11 +316,15 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     missingId: "Bir proje belirtilmedi.",
     notFound:
       "Bu proje bu tarayıcıda yok. Projeler yalnızca oluşturuldukları cihaz ve tarayıcıda saklanır.",
+    storageError: "Bu tarayıcının yerel depolaması açılamadı. Dosyalarınız değiştirilmedi.",
+    retry: "Tekrar dene",
+    fileError: "Bu dosya açılamadı. Kayıtlı kopya değişmedi.",
+    retrySave: "Yeniden kaydet",
     files: "Dosyalar",
     code: "Kod",
     preview: "Önizleme",
-    previewUnavailable:
-      "Önizleme için proje çalışma ortamı gerekiyor ve bu henüz hazır değil. Dosyalarınız kaydedildi ve hazır.",
+    previewBundleNote:
+      "Deneysel: kodunuz tarayıcıda paketlenir ve npm paketleri esm.sh'den yüklenir. Henüz npm install veya geliştirme sunucusu yok.",
     selectFile: "Düzenlemek için bir dosya seçin.",
     saved: "Kaydedildi",
     unsaved: "Kaydedilmemiş değişiklikler",
@@ -197,6 +339,25 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     exportZip: "ZIP olarak dışa aktar",
     exporting: "Dışa aktarılıyor…",
     exportError: "Dışa aktarma başarısız. Dosyalarınız bu tarayıcıda kayıtlı olmaya devam ediyor.",
+    followEdits: "Yapay zekâ düzenlemelerini izle",
+    agentWriting: "Ajan yazıyor…",
+    previewOff: "Bu dağıtımda önizleme henüz kurulmadı. Dosyalarınız kayıtlı ve hazır.",
+    previewNoEntry: "Önizlemek için projenin en üstüne bir index.html ekleyin.",
+    previewLoading: "Önizleme yükleniyor…",
+    previewFrame: "Projenizin önizlemesi",
+    reloadPreview: "Önizlemeyi yenile",
+    openPreviewTab: "Yeni sekmede aç",
+    openPreviewTabHint:
+      "Önizlemeyi ayrı açar. Değişiklikleri görmek için kaydettikten sonra o sekmeyi yenileyin.",
+    viewportLabel: "Önizleme boyutu",
+    viewportDesktop: "Masaüstü",
+    viewportTablet: "Tablet",
+    viewportMobile: "Mobil",
+    console: "Konsol",
+    consoleEmpty: "Henüz konsol mesajı yok.",
+    consoleClear: "Temizle",
+    debugErrors: "Bu hataları ayıkla",
+    consoleDebugPrompt: "Proje önizlemesindeki bu hataların nedenini bul:",
   },
   fr: {
     useTemplate: "Utiliser ce modèle",
@@ -207,11 +368,16 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     missingId: "Aucun projet indiqué.",
     notFound:
       "Ce projet n'est pas dans ce navigateur. Les projets sont enregistrés uniquement sur l'appareil et le navigateur où ils ont été créés.",
+    storageError:
+      "Impossible d’ouvrir le stockage local de ce navigateur. Vos fichiers n’ont pas été modifiés.",
+    retry: "Réessayer",
+    fileError: "Impossible d’ouvrir ce fichier. La copie enregistrée n’a pas changé.",
+    retrySave: "Réessayer d’enregistrer",
     files: "Fichiers",
     code: "Code",
     preview: "Aperçu",
-    previewUnavailable:
-      "L'aperçu a besoin de l'environnement d'exécution du projet, qui n'est pas encore prêt. Vos fichiers sont enregistrés.",
+    previewBundleNote:
+      "Expérimental : votre code est empaqueté dans le navigateur et les paquets npm sont chargés depuis esm.sh. Pas encore de npm install ni de serveur de développement.",
     selectFile: "Sélectionnez un fichier à modifier.",
     saved: "Enregistré",
     unsaved: "Modifications non enregistrées",
@@ -226,6 +392,26 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     exportZip: "Exporter en ZIP",
     exporting: "Exportation…",
     exportError: "L'exportation a échoué. Vos fichiers restent enregistrés dans ce navigateur.",
+    followEdits: "Suivre les modifications de l'IA",
+    agentWriting: "L'agent écrit…",
+    previewOff:
+      "L'aperçu n'est pas encore configuré sur ce déploiement. Vos fichiers sont enregistrés.",
+    previewNoEntry: "Ajoutez un index.html à la racine du projet pour l'afficher en aperçu.",
+    previewLoading: "Chargement de l'aperçu…",
+    previewFrame: "Aperçu de votre projet",
+    reloadPreview: "Recharger l'aperçu",
+    openPreviewTab: "Ouvrir dans un nouvel onglet",
+    openPreviewTabHint:
+      "Ouvre l’aperçu seul. Rechargez cet onglet après l’enregistrement pour voir les changements.",
+    viewportLabel: "Taille de l'aperçu",
+    viewportDesktop: "Ordinateur",
+    viewportTablet: "Tablette",
+    viewportMobile: "Mobile",
+    console: "Console",
+    consoleEmpty: "Aucun message dans la console pour l'instant.",
+    consoleClear: "Effacer",
+    debugErrors: "Déboguer ces erreurs",
+    consoleDebugPrompt: "Trouve la cause de ces erreurs de l'aperçu du projet :",
   },
   pt: {
     useTemplate: "Usar este modelo",
@@ -236,11 +422,16 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     missingId: "Nenhum projeto foi indicado.",
     notFound:
       "Este projeto não está neste navegador. Os projetos ficam salvos só no dispositivo e no navegador onde foram criados.",
+    storageError:
+      "Não foi possível abrir o armazenamento local deste navegador. Seus arquivos não foram alterados.",
+    retry: "Tentar de novo",
+    fileError: "Não foi possível abrir este arquivo. A cópia salva não mudou.",
+    retrySave: "Tentar salvar de novo",
     files: "Arquivos",
     code: "Código",
     preview: "Prévia",
-    previewUnavailable:
-      "A prévia precisa do ambiente de execução do projeto, que ainda está em desenvolvimento. Seus arquivos estão salvos.",
+    previewBundleNote:
+      "Experimental: seu código é empacotado no navegador e os pacotes npm são carregados do esm.sh. Ainda não há npm install nem servidor de desenvolvimento.",
     selectFile: "Selecione um arquivo para editar.",
     saved: "Salvo",
     unsaved: "Alterações não salvas",
@@ -255,5 +446,25 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     exportZip: "Exportar ZIP",
     exporting: "Exportando…",
     exportError: "Falha na exportação. Seus arquivos continuam salvos neste navegador.",
+    followEdits: "Acompanhar edições da IA",
+    agentWriting: "O agente está escrevendo…",
+    previewOff:
+      "A pré-visualização ainda não está configurada nesta implantação. Seus arquivos estão salvos.",
+    previewNoEntry: "Adicione um index.html na raiz do projeto para pré-visualizar.",
+    previewLoading: "Carregando pré-visualização…",
+    previewFrame: "Pré-visualização do seu projeto",
+    reloadPreview: "Recarregar pré-visualização",
+    openPreviewTab: "Abrir em nova aba",
+    openPreviewTabHint:
+      "Abre a pré-visualização sozinha. Recarregue essa aba depois de salvar para ver as mudanças.",
+    viewportLabel: "Tamanho da pré-visualização",
+    viewportDesktop: "Computador",
+    viewportTablet: "Tablet",
+    viewportMobile: "Celular",
+    console: "Console",
+    consoleEmpty: "Nenhuma mensagem no console ainda.",
+    consoleClear: "Limpar",
+    debugErrors: "Depurar estes erros",
+    consoleDebugPrompt: "Encontre a causa destes erros da pré-visualização do projeto:",
   },
 };
