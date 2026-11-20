@@ -15,6 +15,7 @@ export interface WorkspaceStrings {
   files: string;
   code: string;
   preview: string;
+  dashboard: string;
   previewBundleNote: string;
   selectFile: string;
   saved: string;
@@ -66,6 +67,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "Files",
     code: "Code",
     preview: "Preview",
+    dashboard: "Dashboard",
     previewBundleNote:
       "Experimental: your code is bundled in the browser and npm packages load from esm.sh. There is no npm install or dev server yet.",
     selectFile: "Select a file to edit.",
@@ -118,6 +120,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "Файлы",
     code: "Код",
     preview: "Превью",
+    dashboard: "Панель",
     previewBundleNote:
       "Экспериментально: код собирается в браузере, а npm-пакеты загружаются с esm.sh. npm install и dev-сервера пока нет.",
     selectFile: "Выберите файл для редактирования.",
@@ -171,6 +174,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "ファイル",
     code: "コード",
     preview: "プレビュー",
+    dashboard: "指標",
     previewBundleNote:
       "試験的機能：コードはブラウザ内でバンドルされ、npm パッケージは esm.sh から読み込まれます。npm install や開発サーバーはまだありません。",
     selectFile: "編集するファイルを選んでください。",
@@ -223,6 +227,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "파일",
     code: "코드",
     preview: "미리보기",
+    dashboard: "대시보드",
     previewBundleNote:
       "실험 기능: 코드는 브라우저에서 번들되고 npm 패키지는 esm.sh에서 불러옵니다. 아직 npm install이나 개발 서버는 없습니다.",
     selectFile: "편집할 파일을 선택하세요.",
@@ -273,6 +278,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "文件",
     code: "代码",
     preview: "预览",
+    dashboard: "仪表盘",
     previewBundleNote:
       "实验功能:代码在浏览器中打包,npm 包从 esm.sh 加载。目前还没有 npm install 或开发服务器。",
     selectFile: "选择要编辑的文件。",
@@ -323,6 +329,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "Dosyalar",
     code: "Kod",
     preview: "Önizleme",
+    dashboard: "Pano",
     previewBundleNote:
       "Deneysel: kodunuz tarayıcıda paketlenir ve npm paketleri esm.sh'den yüklenir. Henüz npm install veya geliştirme sunucusu yok.",
     selectFile: "Düzenlemek için bir dosya seçin.",
@@ -376,6 +383,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "Fichiers",
     code: "Code",
     preview: "Aperçu",
+    dashboard: "Tableau",
     previewBundleNote:
       "Expérimental : votre code est empaqueté dans le navigateur et les paquets npm sont chargés depuis esm.sh. Pas encore de npm install ni de serveur de développement.",
     selectFile: "Sélectionnez un fichier à modifier.",
@@ -430,6 +438,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "Arquivos",
     code: "Código",
     preview: "Prévia",
+    dashboard: "Painel",
     previewBundleNote:
       "Experimental: seu código é empacotado no navegador e os pacotes npm são carregados do esm.sh. Ainda não há npm install nem servidor de desenvolvimento.",
     selectFile: "Selecione um arquivo para editar.",

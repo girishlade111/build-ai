@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AgentPanel } from "./AgentPanel";
 import { CheckpointHistory } from "./CheckpointHistory";
 import { Preview } from "./Preview";
+import { ProjectDashboard } from "./ProjectDashboard";
 import { PreviewController } from "../preview/controller";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
@@ -59,7 +60,7 @@ export function Workspace({ locale }: { locale: Locale }) {
   useEffect(() => {
     if (save === "saved") setPreviewKey((k) => k + 1);
   }, [save, files]);
-  const [view, setView] = useState<"code" | "preview">("code");
+  const [view, setView] = useState<"code" | "preview" | "dashboard">("code");
   const [agentBusy, setAgentBusy] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -262,7 +263,7 @@ export function Workspace({ locale }: { locale: Locale }) {
         </Link>
         <h1 className={styles.projectName}>{load.project.name}</h1>
         <div className={styles.views} role="group" aria-label={w.viewLabel}>
-          {(["code", "preview"] as const).map((v) => (
+          {(["code", "preview", "dashboard"] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -270,7 +271,7 @@ export function Workspace({ locale }: { locale: Locale }) {
               className={styles.viewButton}
               onClick={() => setView(v)}
             >
-              {v === "code" ? w.code : w.preview}
+              {v === "code" ? w.code : v === "preview" ? w.preview : w.dashboard}
             </button>
           ))}
         </div>
@@ -382,8 +383,22 @@ export function Workspace({ locale }: { locale: Locale }) {
           </section>
         </div>
       ) : null}
+      {view === "dashboard" ? (
+        <ProjectDashboard
+          locale={locale}
+          project={load.project}
+          files={files}
+          refreshKey={previewKey}
+          historyKey={historyKey}
+          onOpenFile={(path) => {
+            void select(path);
+            setView("code");
+          }}
+          onCheckpointCreated={() => setHistoryKey((k) => k + 1)}
+        />
+      ) : null}
       {/* Kept mounted while editing so the agent's check_preview can reload it. */}
-      <div className={view === "code" ? styles.hiddenPane : styles.previewWrap}>
+      <div className={view === "preview" ? styles.previewWrap : styles.hiddenPane}>
         <Preview
           locale={locale}
           projectId={id!}
