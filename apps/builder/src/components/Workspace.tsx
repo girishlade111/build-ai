@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { AgentPanel } from "./AgentPanel";
 import { CheckpointHistory } from "./CheckpointHistory";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { Preview } from "./Preview";
 import { ProjectDashboard } from "./ProjectDashboard";
 import { PreviewController } from "../preview/controller";
@@ -323,109 +324,132 @@ export function Workspace({ locale }: { locale: Locale }) {
         </div>
       ) : null}
       {view === "code" ? (
-        <div className={styles.code}>
-          <nav className={styles.explorer} aria-label={w.files}>
-            <p className={styles.explorerTitle}>{w.files}</p>
-            <label className={styles.follow}>
-              <input
-                type="checkbox"
-                checked={follow}
-                onChange={(e) => setFollow(e.target.checked)}
+        <ErrorBoundary
+          locale={locale}
+          scope="editor"
+          variant="workspace"
+          resetKeys={[id, view, open?.path, draft?.path]}
+        >
+          <div className={styles.code}>
+            <nav className={styles.explorer} aria-label={w.files}>
+              <p className={styles.explorerTitle}>{w.files}</p>
+              <label className={styles.follow}>
+                <input
+                  type="checkbox"
+                  checked={follow}
+                  onChange={(e) => setFollow(e.target.checked)}
+                />
+                {w.followEdits}
+              </label>
+              <Tree
+                nodes={buildFileTree(files.map((f) => f.path))}
+                active={open?.path}
+                onSelect={select}
               />
-              {w.followEdits}
-            </label>
-            <Tree
-              nodes={buildFileTree(files.map((f) => f.path))}
-              active={open?.path}
-              onSelect={select}
-            />
-          </nav>
-          <section className={styles.editorPane}>
-            {draft && follow && save !== "dirty" ? (
-              <>
-                <p className={styles.breadcrumb}>
-                  {draft.path}
-                  <span className={styles.writing} role="status">
-                    {" "}
-                    · {w.agentWriting}
-                  </span>
-                </p>
-                <div className={styles.editor}>
-                  <CodeEditor
-                    path={draft.path}
-                    value={draft.content}
-                    loadingLabel={w.editorLoading}
-                    onChange={() => {}}
-                    onSave={() => {}}
-                    readOnly
-                  />
-                </div>
-              </>
-            ) : open ? (
-              <>
-                <p className={styles.breadcrumb}>
-                  {open.path}
-                  {save === "dirty" ? <span aria-hidden="true"> ●</span> : null}
-                </p>
-                <div className={styles.editor}>
-                  <CodeEditor
-                    path={open.path}
-                    value={open.content}
-                    loadingLabel={w.editorLoading}
-                    onChange={edit}
-                    onSave={saveNow}
-                  />
-                </div>
-              </>
-            ) : (
-              <p className={styles.empty}>{w.selectFile}</p>
-            )}
-          </section>
-        </div>
+            </nav>
+            <section className={styles.editorPane}>
+              {draft && follow && save !== "dirty" ? (
+                <>
+                  <p className={styles.breadcrumb}>
+                    {draft.path}
+                    <span className={styles.writing} role="status">
+                      {" "}
+                      · {w.agentWriting}
+                    </span>
+                  </p>
+                  <div className={styles.editor}>
+                    <CodeEditor
+                      path={draft.path}
+                      value={draft.content}
+                      loadingLabel={w.editorLoading}
+                      onChange={() => {}}
+                      onSave={() => {}}
+                      readOnly
+                    />
+                  </div>
+                </>
+              ) : open ? (
+                <>
+                  <p className={styles.breadcrumb}>
+                    {open.path}
+                    {save === "dirty" ? <span aria-hidden="true"> ●</span> : null}
+                  </p>
+                  <div className={styles.editor}>
+                    <CodeEditor
+                      path={open.path}
+                      value={open.content}
+                      loadingLabel={w.editorLoading}
+                      onChange={edit}
+                      onSave={saveNow}
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className={styles.empty}>{w.selectFile}</p>
+              )}
+            </section>
+          </div>
+        </ErrorBoundary>
       ) : null}
       {view === "dashboard" ? (
-        <ProjectDashboard
+        <ErrorBoundary
           locale={locale}
-          project={load.project}
-          files={files}
-          refreshKey={previewKey}
-          historyKey={historyKey}
-          onOpenFile={(path) => {
-            void select(path);
-            setView("code");
-          }}
-          onCheckpointCreated={() => setHistoryKey((k) => k + 1)}
-        />
+          scope="dashboard"
+          variant="workspace"
+          resetKeys={[id, view, previewKey, historyKey]}
+        >
+          <ProjectDashboard
+            locale={locale}
+            project={load.project}
+            files={files}
+            refreshKey={previewKey}
+            historyKey={historyKey}
+            onOpenFile={(path) => {
+              void select(path);
+              setView("code");
+            }}
+            onCheckpointCreated={() => setHistoryKey((k) => k + 1)}
+          />
+        </ErrorBoundary>
       ) : null}
       {/* Kept mounted while editing so the agent's check_preview can reload it. */}
       <div className={view === "preview" ? styles.previewWrap : styles.hiddenPane}>
-        <Preview
+        <ErrorBoundary
+          locale={locale}
+          scope="preview"
+          variant="workspace"
+          resetKeys={[id, view, previewKey]}
+        >
+          <Preview
+            locale={locale}
+            projectId={id!}
+            paths={files.map((f) => f.path)}
+            refreshKey={previewKey}
+            controller={previewController}
+            onDebug={(prompt) =>
+              setAgentRequest((r) => ({ id: (r?.id ?? 0) + 1, mode: "debug", prompt }))
+            }
+          />
+        </ErrorBoundary>
+      </div>
+      <ErrorBoundary locale={locale} scope="agent" variant="workspace" compact resetKeys={[id]}>
+        <AgentPanel
           locale={locale}
           projectId={id!}
-          paths={files.map((f) => f.path)}
-          refreshKey={previewKey}
-          controller={previewController}
-          onDebug={(prompt) =>
-            setAgentRequest((r) => ({ id: (r?.id ?? 0) + 1, mode: "debug", prompt }))
-          }
+          onWrite={(p) => void agentWrote(p)}
+          onDraft={setDraft}
+          onFilesChanged={() => {
+            setHistoryKey((k) => k + 1);
+            void restored();
+          }}
+          request={agentRequest}
+          checkPreview={() => previewController.check()}
+          onRunningChange={(r) => {
+            setAgentBusy(r);
+            if (!r) setHistoryKey((k) => k + 1);
+          }}
         />
-      </div>
-      <AgentPanel
-        locale={locale}
-        projectId={id!}
-        onWrite={(p) => void agentWrote(p)}
-        onDraft={setDraft}
-        onFilesChanged={() => {
-          setHistoryKey((k) => k + 1);
-          void restored();
-        }}
-        request={agentRequest}
-        checkPreview={() => previewController.check()}
-        onRunningChange={(r) => {
-          setAgentBusy(r);
-          if (!r) setHistoryKey((k) => k + 1);
-        }}
-      />
+      </ErrorBoundary>
     </div>
   );
 }

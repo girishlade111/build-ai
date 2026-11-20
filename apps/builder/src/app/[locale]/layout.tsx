@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { defaultLocale, isLocale, localeInfo } from "@ladestack/i18n";
 import "@ladestack/design-tokens/tokens.css";
 import "../globals.css";
+import { ErrorBoundary } from "../../components/ErrorBoundary";
 
 // Every response carries a fresh CSP nonce (src/middleware.ts), so pages render per request.
 export const dynamic = "force-dynamic";
@@ -26,7 +27,11 @@ export default async function LocaleLayout({
   const info = localeInfo[locale];
   return (
     <html lang={info.bcp47} dir={info.dir}>
-      <body>{children}</body>
+      <body>
+        <ErrorBoundary locale={locale} scope="app" variant="global">
+          {children}
+        </ErrorBoundary>
+      </body>
     </html>
   );
 }

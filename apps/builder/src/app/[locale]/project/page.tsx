@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { defaultLocale, isLocale } from "@ladestack/i18n";
+import { ErrorBoundary } from "../../../components/ErrorBoundary";
 import { Workspace } from "../../../components/Workspace";
 
 export default async function LocalizedProjectPage({
@@ -11,8 +12,10 @@ export default async function LocalizedProjectPage({
   const { locale } = await params;
   if (!isLocale(locale) || locale === defaultLocale) notFound();
   return (
-    <Suspense>
-      <Workspace locale={locale} />
-    </Suspense>
+    <ErrorBoundary locale={locale} scope="workspace" variant="workspace">
+      <Suspense>
+        <Workspace locale={locale} />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
