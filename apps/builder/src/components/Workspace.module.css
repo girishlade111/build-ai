@@ -43,12 +43,14 @@
 .viewButton {
   min-height: 36px;
   min-width: 44px;
-  padding: 0 14px;
+  padding: 0 13px;
   border: 0;
   background: transparent;
   color: var(--color-ink);
   font: inherit;
   font-size: 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
 }
 .viewButton[aria-pressed="true"] {
@@ -57,13 +59,29 @@
 }
 .saveState {
   margin: 0;
-  min-width: 9em;
-  text-align: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
   font-size: 13px;
   color: var(--color-body);
 }
 .saveState[data-state="dirty"] {
   color: var(--color-primary-active);
+}
+.saveSep {
+  color: var(--color-hairline-strong, #b6b3a7);
+}
+.autoSaveText {
+  color: var(--color-body);
+  font-size: 12px;
+}
+.autoSaveTime {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
 }
 .alert {
   display: flex;
@@ -210,6 +228,8 @@
   color: var(--color-ink);
   font: inherit;
   font-size: 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
 }
 .exportButton:hover:not(:disabled) {

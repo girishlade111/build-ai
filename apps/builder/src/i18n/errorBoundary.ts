@@ -5,6 +5,7 @@ export type ErrorBoundaryScope =
   | "workspace"
   | "editor"
   | "preview"
+  | "overview"
   | "dashboard"
   | "agent";
 
@@ -37,6 +38,7 @@ export const errorBoundaryStrings: Record<Locale, ErrorBoundaryStrings> = {
       workspace: "Workspace",
       editor: "Code editor",
       preview: "Live preview",
+      overview: "Project overview",
       dashboard: "Project dashboard",
       agent: "Agent panel",
     },
@@ -56,6 +58,7 @@ export const errorBoundaryStrings: Record<Locale, ErrorBoundaryStrings> = {
       workspace: "Рабочая область",
       editor: "Редактор кода",
       preview: "Предпросмотр",
+      overview: "Обзор проекта",
       dashboard: "Панель проекта",
       agent: "Панель агента",
     },
@@ -75,6 +78,7 @@ export const errorBoundaryStrings: Record<Locale, ErrorBoundaryStrings> = {
       workspace: "ワークスペース",
       editor: "コードエディタ",
       preview: "ライブプレビュー",
+      overview: "プロジェクト概要",
       dashboard: "プロジェクト指標",
       agent: "エージェントパネル",
     },
@@ -94,6 +98,7 @@ export const errorBoundaryStrings: Record<Locale, ErrorBoundaryStrings> = {
       workspace: "작업 공간",
       editor: "코드 편집기",
       preview: "실시간 미리보기",
+      overview: "프로젝트 개요",
       dashboard: "프로젝트 대시보드",
       agent: "에이전트 패널",
     },
@@ -113,6 +118,7 @@ export const errorBoundaryStrings: Record<Locale, ErrorBoundaryStrings> = {
       workspace: "工作区",
       editor: "代码编辑器",
       preview: "实时预览",
+      overview: "项目概览",
       dashboard: "项目仪表盘",
       agent: "智能体面板",
     },
@@ -132,6 +138,7 @@ export const errorBoundaryStrings: Record<Locale, ErrorBoundaryStrings> = {
       workspace: "Çalışma alanı",
       editor: "Kod düzenleyici",
       preview: "Canlı önizleme",
+      overview: "Proje özeti",
       dashboard: "Proje panosu",
       agent: "Ajan paneli",
     },
@@ -151,6 +158,7 @@ export const errorBoundaryStrings: Record<Locale, ErrorBoundaryStrings> = {
       workspace: "Espace de travail",
       editor: "Éditeur de code",
       preview: "Aperçu en direct",
+      overview: "Aperçu du projet",
       dashboard: "Tableau du projet",
       agent: "Panneau de l'agent",
     },
@@ -170,6 +178,7 @@ export const errorBoundaryStrings: Record<Locale, ErrorBoundaryStrings> = {
       workspace: "Área de trabalho",
       editor: "Editor de código",
       preview: "Pré-visualização ao vivo",
+      overview: "Visão geral do projeto",
       dashboard: "Painel do projeto",
       agent: "Painel do agente",
     },

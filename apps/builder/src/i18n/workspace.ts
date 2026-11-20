@@ -15,6 +15,7 @@ export interface WorkspaceStrings {
   files: string;
   code: string;
   preview: string;
+  overview: string;
   dashboard: string;
   previewBundleNote: string;
   selectFile: string;
@@ -24,6 +25,9 @@ export interface WorkspaceStrings {
   saveError: string;
   conflict: string;
   reloadFile: string;
+  autoSavedLabel: string;
+  autoSavePending: string;
+  autoSaveTooltip: string;
   back: string;
   viewLabel: string;
   editorLoading: string;
@@ -67,6 +71,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "Files",
     code: "Code",
     preview: "Preview",
+    overview: "Overview",
     dashboard: "Dashboard",
     previewBundleNote:
       "Experimental: your code is bundled in the browser and npm packages load from esm.sh. There is no npm install or dev server yet.",
@@ -78,6 +83,9 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     conflict:
       "This file changed somewhere else, perhaps in another tab. Your edits were not saved over it.",
     reloadFile: "Load the latest version",
+    autoSavedLabel: "Auto-saved",
+    autoSavePending: "Auto-save ready",
+    autoSaveTooltip: "Project state auto-saves to localStorage every 30 seconds",
     back: "Back to start",
     viewLabel: "View",
     editorLoading: "Loading editor…",
@@ -120,6 +128,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "Файлы",
     code: "Код",
     preview: "Превью",
+    overview: "Обзор",
     dashboard: "Панель",
     previewBundleNote:
       "Экспериментально: код собирается в браузере, а npm-пакеты загружаются с esm.sh. npm install и dev-сервера пока нет.",
@@ -131,6 +140,9 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     conflict:
       "Этот файл изменился в другом месте, возможно в другой вкладке. Ваши правки не записаны поверх него.",
     reloadFile: "Загрузить последнюю версию",
+    autoSavedLabel: "Автосохр.",
+    autoSavePending: "Автосохранение готово",
+    autoSaveTooltip: "Состояние проекта автосохраняется в localStorage каждые 30 секунд",
     back: "В начало",
     viewLabel: "Вид",
     editorLoading: "Загрузка редактора…",
@@ -174,6 +186,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "ファイル",
     code: "コード",
     preview: "プレビュー",
+    overview: "概要",
     dashboard: "指標",
     previewBundleNote:
       "試験的機能：コードはブラウザ内でバンドルされ、npm パッケージは esm.sh から読み込まれます。npm install や開発サーバーはまだありません。",
@@ -185,6 +198,9 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     conflict:
       "このファイルは別の場所(別のタブなど)で変更されました。あなたの編集で上書きはしていません。",
     reloadFile: "最新版を読み込む",
+    autoSavedLabel: "自動保存",
+    autoSavePending: "自動保存待機中",
+    autoSaveTooltip: "プロジェクトの状態を30秒ごとに localStorage へ自動保存します",
     back: "最初に戻る",
     viewLabel: "表示",
     editorLoading: "エディタを読み込んでいます…",
@@ -227,6 +243,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "파일",
     code: "코드",
     preview: "미리보기",
+    overview: "개요",
     dashboard: "대시보드",
     previewBundleNote:
       "실험 기능: 코드는 브라우저에서 번들되고 npm 패키지는 esm.sh에서 불러옵니다. 아직 npm install이나 개발 서버는 없습니다.",
@@ -238,6 +255,9 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     conflict:
       "이 파일이 다른 곳(예: 다른 탭)에서 변경되었습니다. 편집 내용으로 덮어쓰지 않았습니다.",
     reloadFile: "최신 버전 불러오기",
+    autoSavedLabel: "자동 저장",
+    autoSavePending: "자동 저장 대기 중",
+    autoSaveTooltip: "프로젝트 상태가 30초마다 localStorage에 자동 저장됩니다",
     back: "처음으로",
     viewLabel: "보기",
     editorLoading: "편집기를 불러오는 중…",
@@ -278,6 +298,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "文件",
     code: "代码",
     preview: "预览",
+    overview: "概览",
     dashboard: "仪表盘",
     previewBundleNote:
       "实验功能:代码在浏览器中打包,npm 包从 esm.sh 加载。目前还没有 npm install 或开发服务器。",
@@ -288,6 +309,9 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     saveError: "保存失败。你的修改仍保留在编辑器中。",
     conflict: "此文件已在其他地方(可能是另一个标签页)被修改。你的修改没有覆盖它。",
     reloadFile: "加载最新版本",
+    autoSavedLabel: "自动保存",
+    autoSavePending: "自动保存就绪",
+    autoSaveTooltip: "每 30 秒自动将项目状态保存到 localStorage",
     back: "返回开始",
     viewLabel: "视图",
     editorLoading: "正在加载编辑器…",
@@ -329,6 +353,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "Dosyalar",
     code: "Kod",
     preview: "Önizleme",
+    overview: "Özet",
     dashboard: "Pano",
     previewBundleNote:
       "Deneysel: kodunuz tarayıcıda paketlenir ve npm paketleri esm.sh'den yüklenir. Henüz npm install veya geliştirme sunucusu yok.",
@@ -340,6 +365,9 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     conflict:
       "Bu dosya başka bir yerde, belki başka bir sekmede değişti. Düzenlemeleriniz onun üzerine yazılmadı.",
     reloadFile: "En son sürümü yükle",
+    autoSavedLabel: "Oto. kayıt",
+    autoSavePending: "Otomatik kayıt hazır",
+    autoSaveTooltip: "Proje durumu her 30 saniyede bir localStorage içine kaydedilir",
     back: "Başa dön",
     viewLabel: "Görünüm",
     editorLoading: "Düzenleyici yükleniyor…",
@@ -383,6 +411,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "Fichiers",
     code: "Code",
     preview: "Aperçu",
+    overview: "Vue d'ensemble",
     dashboard: "Tableau",
     previewBundleNote:
       "Expérimental : votre code est empaqueté dans le navigateur et les paquets npm sont chargés depuis esm.sh. Pas encore de npm install ni de serveur de développement.",
@@ -394,6 +423,9 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     conflict:
       "Ce fichier a été modifié ailleurs, peut-être dans un autre onglet. Vos modifications ne l'ont pas écrasé.",
     reloadFile: "Charger la dernière version",
+    autoSavedLabel: "Sauvegarde auto",
+    autoSavePending: "Sauvegarde auto prête",
+    autoSaveTooltip: "L'état du projet est enregistré automatiquement dans localStorage toutes les 30 secondes",
     back: "Retour au début",
     viewLabel: "Vue",
     editorLoading: "Chargement de l'éditeur…",
@@ -438,6 +470,7 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     files: "Arquivos",
     code: "Código",
     preview: "Prévia",
+    overview: "Visão geral",
     dashboard: "Painel",
     previewBundleNote:
       "Experimental: seu código é empacotado no navegador e os pacotes npm são carregados do esm.sh. Ainda não há npm install nem servidor de desenvolvimento.",
@@ -449,6 +482,9 @@ export const workspace: Record<Locale, WorkspaceStrings> = {
     conflict:
       "Este arquivo foi alterado em outro lugar, talvez em outra aba. Suas edições não foram gravadas por cima dele.",
     reloadFile: "Carregar a versão mais recente",
+    autoSavedLabel: "Salvo auto.",
+    autoSavePending: "Salvamento automático pronto",
+    autoSaveTooltip: "O estado do projeto é salvo automaticamente no localStorage a cada 30 segundos",
     back: "Voltar ao início",
     viewLabel: "Visualização",
     editorLoading: "Carregando o editor…",

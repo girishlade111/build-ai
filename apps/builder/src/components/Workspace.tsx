@@ -7,6 +7,7 @@ import { CheckpointHistory } from "./CheckpointHistory";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Preview } from "./Preview";
 import { ProjectDashboard } from "./ProjectDashboard";
+import { ProjectOverview } from "./ProjectOverview";
 import { PreviewController } from "../preview/controller";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
@@ -15,7 +16,21 @@ import type { Project, ProjectFile } from "@ladestack/shared-types";
 import { settingsStrings } from "../i18n/settings";
 import { workspace } from "../i18n/workspace";
 import { getProjectStore } from "../storage/client";
+import {
+  AUTOSAVE_INTERVAL_MS,
+  buildFileRevisionMap,
+  estimateChangedLines,
+  formatSavedClock,
+  formatSavedDateTime,
+  loadWorkspaceAutoSave,
+  recordFileChange,
+  saveWorkspaceAutoSave,
+  type FileAuthorship,
+  type FileChangeEvent,
+  type WorkspaceView,
+} from "../workspace/autosave";
 import { buildFileTree, defaultFile, type TreeNode } from "../workspace/fileTree";
+import { countLines } from "../workspace/metrics";
 import { buildProjectZip, downloadZip, zipFileName } from "../export/zip";
 import styles from "./Workspace.module.css";
 
@@ -61,9 +76,12 @@ export function Workspace({ locale }: { locale: Locale }) {
   useEffect(() => {
     if (save === "saved") setPreviewKey((k) => k + 1);
   }, [save, files]);
-  const [view, setView] = useState<"code" | "preview" | "dashboard">("code");
+  const [view, setView] = useState<WorkspaceView>("code");
   const [agentBusy, setAgentBusy] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
+  const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
+  const [authorship, setAuthorship] = useState<Record<string, FileAuthorship>>({});
+  const [changeHistory, setChangeHistory] = useState<FileChangeEvent[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   /** True while an edit is waiting for its autosave. */
   const pending = useRef(false);
@@ -71,6 +89,55 @@ export function Workspace({ locale }: { locale: Locale }) {
   openRef.current = open;
   const saveRef = useRef(save);
   saveRef.current = save;
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const followRef = useRef(follow);
+  followRef.current = follow;
+  const filesRef = useRef(files);
+  filesRef.current = files;
+  const projectRef = useRef<Project | null>(null);
+  projectRef.current = load.state === "ready" ? load.project : null;
+  const authorshipRef = useRef(authorship);
+  authorshipRef.current = authorship;
+  const changeHistoryRef = useRef(changeHistory);
+  changeHistoryRef.current = changeHistory;
+  const fileContentsCacheRef = useRef<Record<string, string>>({});
+
+  const persistAutoSaveSnapshot = useCallback(
+    (overrides?: {
+      authorship?: Record<string, FileAuthorship>;
+      changeHistory?: FileChangeEvent[];
+      files?: ProjectFile[];
+    }) => {
+      const currentProject = projectRef.current;
+      if (!id || !currentProject || typeof window === "undefined") return;
+      const nowIso = new Date().toISOString();
+      const currentOpen = openRef.current;
+      const snapshotFiles = overrides?.files ?? filesRef.current;
+      const res = saveWorkspaceAutoSave(window.localStorage, {
+        version: 1,
+        projectId: id,
+        projectName: currentProject.name,
+        savedAt: nowIso,
+        view: viewRef.current,
+        activeFilePath: currentOpen?.path ?? null,
+        followEdits: followRef.current,
+        openDraft: currentOpen
+          ? {
+              path: currentOpen.path,
+              revision: currentOpen.revision,
+              content: currentOpen.content,
+              dirty: saveRef.current === "dirty",
+            }
+          : null,
+        fileRevisions: buildFileRevisionMap(snapshotFiles),
+        authorship: overrides?.authorship ?? authorshipRef.current,
+        changeHistory: overrides?.changeHistory ?? changeHistoryRef.current,
+      });
+      if (res.ok) setLastAutoSavedAt(res.savedAt);
+    },
+    [id],
+  );
 
   const openFile = useCallback(async (projectId: string, path: string) => {
     try {
@@ -99,10 +166,36 @@ export function Workspace({ locale }: { locale: Locale }) {
         if (!project) return setLoad({ state: "missing" });
         const list = await store.listFiles(id);
         if (cancelled) return;
+        const allContents = await store.readAllFiles(id);
+        if (cancelled) return;
+        fileContentsCacheRef.current = Object.fromEntries(
+          allContents.map((entry) => [entry.path, entry.content]),
+        );
+        const restoredAutoSave =
+          typeof window !== "undefined" ? loadWorkspaceAutoSave(window.localStorage, id) : null;
+        if (restoredAutoSave) {
+          setAuthorship(restoredAutoSave.authorship);
+          setChangeHistory(restoredAutoSave.changeHistory);
+          setLastAutoSavedAt(restoredAutoSave.savedAt);
+          authorshipRef.current = restoredAutoSave.authorship;
+          changeHistoryRef.current = restoredAutoSave.changeHistory;
+        } else {
+          setAuthorship({});
+          setChangeHistory([]);
+          setLastAutoSavedAt(null);
+          authorshipRef.current = {};
+          changeHistoryRef.current = [];
+        }
         setFiles(list);
+        filesRef.current = list;
+        projectRef.current = project;
         setLoad({ state: "ready", project });
-        const first = defaultFile(list.map((f) => f.path));
-        if (first) await openFile(id, first);
+        const preferred =
+          restoredAutoSave?.activeFilePath &&
+          list.some((f) => f.path === restoredAutoSave.activeFilePath)
+            ? restoredAutoSave.activeFilePath
+            : defaultFile(list.map((f) => f.path));
+        if (preferred) await openFile(id, preferred);
       } catch {
         if (!cancelled) setLoad({ state: "error" });
       }
@@ -111,6 +204,18 @@ export function Workspace({ locale }: { locale: Locale }) {
       cancelled = true;
     };
   }, [id, openFile, attempt]);
+
+  // Periodically auto-save the current workspace project state to localStorage every 30 seconds.
+  useEffect(() => {
+    if (load.state !== "ready" || !id) return;
+    persistAutoSaveSnapshot();
+    const intervalId = window.setInterval(() => {
+      persistAutoSaveSnapshot();
+    }, AUTOSAVE_INTERVAL_MS);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [load.state, id, persistAutoSaveSnapshot]);
 
   const persist = useCallback(async () => {
     clearTimeout(timer.current);
@@ -123,39 +228,72 @@ export function Workspace({ locale }: { locale: Locale }) {
       const result = await store.writeFile(id, current.path, current.content, current.revision);
       if (result.ok) {
         // Keep typing that happened while saving: only advance the revision.
+        const prevContent = fileContentsCacheRef.current[current.path];
+        fileContentsCacheRef.current[current.path] = current.content;
+        const nextFiles = filesRef.current.map((f) =>
+          f.path === result.file.path ? result.file : f,
+        );
+        const tracked = recordFileChange(
+          { authorship: authorshipRef.current, changeHistory: changeHistoryRef.current },
+          {
+            path: current.path,
+            author: "manual",
+            totalLines: countLines(current.content),
+            linesChanged: estimateChangedLines(prevContent, current.content),
+            at: new Date().toISOString(),
+          },
+        );
+        authorshipRef.current = tracked.authorship;
+        changeHistoryRef.current = tracked.changeHistory;
+        setAuthorship(tracked.authorship);
+        setChangeHistory(tracked.changeHistory);
         setOpen((o) =>
           o && o.path === current.path ? { ...o, revision: result.file.revision } : o,
         );
-        setFiles((list) => list.map((f) => (f.path === result.file.path ? result.file : f)));
+        setFiles(nextFiles);
+        filesRef.current = nextFiles;
         setSave(openRef.current?.content === current.content ? "saved" : "dirty");
+        persistAutoSaveSnapshot({
+          authorship: tracked.authorship,
+          changeHistory: tracked.changeHistory,
+          files: nextFiles,
+        });
       } else {
         setSave(result.reason === "conflict" ? "conflict" : "error");
       }
     } catch {
       setSave("error");
     }
-  }, [id]);
+  }, [id, persistAutoSaveSnapshot]);
 
   // Leaving the workspace inside the app (home, settings) unmounts it: save what is pending first.
   const persistRef = useRef(persist);
   useEffect(() => {
     persistRef.current = persist;
   }, [persist]);
+  const persistAutoSaveRef = useRef(persistAutoSaveSnapshot);
+  useEffect(() => {
+    persistAutoSaveRef.current = persistAutoSaveSnapshot;
+  }, [persistAutoSaveSnapshot]);
   useEffect(
     () => () => {
       if (pending.current) void persistRef.current();
+      persistAutoSaveRef.current();
     },
     [],
   );
 
-  // Flush pending edits when the tab is hidden or closed.
+  // Flush pending edits and auto-save snapshot when the tab is hidden or closed.
   useEffect(() => {
     const flush = () => {
-      if (document.visibilityState === "hidden" && timer.current) void persist();
+      if (document.visibilityState === "hidden") {
+        if (timer.current) void persist();
+        persistAutoSaveSnapshot();
+      }
     };
     document.addEventListener("visibilitychange", flush);
     return () => document.removeEventListener("visibilitychange", flush);
-  }, [persist]);
+  }, [persist, persistAutoSaveSnapshot]);
 
   function edit(content: string) {
     setOpen((o) => (o ? { ...o, content } : o));
@@ -176,17 +314,42 @@ export function Workspace({ locale }: { locale: Locale }) {
     await openFile(id, path);
   }
 
-  /** The agent saved a file: refresh the tree, and the open file unless the user has unsaved edits. */
+  /** The agent saved a file: refresh the tree, track AI authorship, and update the open file unless dirty. */
   const agentWrote = useCallback(
     async (path: string) => {
       if (!id) return;
       const store = await getProjectStore();
-      setFiles(await store.listFiles(id));
+      const [nextFiles, read] = await Promise.all([store.listFiles(id), store.readFile(id, path)]);
+      setFiles(nextFiles);
+      filesRef.current = nextFiles;
+      if (read) {
+        const prevContent = fileContentsCacheRef.current[path];
+        fileContentsCacheRef.current[path] = read.content;
+        const tracked = recordFileChange(
+          { authorship: authorshipRef.current, changeHistory: changeHistoryRef.current },
+          {
+            path,
+            author: "ai",
+            totalLines: countLines(read.content),
+            linesChanged: estimateChangedLines(prevContent, read.content),
+            at: new Date().toISOString(),
+          },
+        );
+        authorshipRef.current = tracked.authorship;
+        changeHistoryRef.current = tracked.changeHistory;
+        setAuthorship(tracked.authorship);
+        setChangeHistory(tracked.changeHistory);
+        persistAutoSaveSnapshot({
+          authorship: tracked.authorship,
+          changeHistory: tracked.changeHistory,
+          files: nextFiles,
+        });
+      }
       const current = openRef.current;
       if (!current) await openFile(id, path);
       else if (current.path === path && saveRef.current !== "dirty") await openFile(id, path);
     },
-    [id, openFile],
+    [id, openFile, persistAutoSaveSnapshot],
   );
 
   /** Files were restored or deleted: reload the tree and the open file. */
@@ -264,7 +427,7 @@ export function Workspace({ locale }: { locale: Locale }) {
         </Link>
         <h1 className={styles.projectName}>{load.project.name}</h1>
         <div className={styles.views} role="group" aria-label={w.viewLabel}>
-          {(["code", "preview", "dashboard"] as const).map((v) => (
+          {(["code", "preview", "overview", "dashboard"] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -272,7 +435,13 @@ export function Workspace({ locale }: { locale: Locale }) {
               className={styles.viewButton}
               onClick={() => setView(v)}
             >
-              {v === "code" ? w.code : v === "preview" ? w.preview : w.dashboard}
+              {v === "code"
+                ? w.code
+                : v === "preview"
+                  ? w.preview
+                  : v === "overview"
+                    ? w.overview
+                    : w.dashboard}
             </button>
           ))}
         </div>
@@ -294,8 +463,36 @@ export function Workspace({ locale }: { locale: Locale }) {
         <Link className={styles.settingsLink} href={`${localePrefix(locale)}/settings`}>
           {settingsStrings[locale].link}
         </Link>
-        <p className={styles.saveState} role="status" data-state={save}>
-          {save === "conflict" || save === "error" ? null : status[save]}
+        <p
+          className={styles.saveState}
+          role="status"
+          aria-live="polite"
+          data-state={save}
+          data-testid="workspace-autosave"
+          title={
+            lastAutoSavedAt
+              ? `${w.autoSaveTooltip} (${formatSavedDateTime(lastAutoSavedAt, locale)})`
+              : w.autoSaveTooltip
+          }
+        >
+          {save === "conflict" || save === "error" ? null : (
+            <>
+              <span>{status[save]}</span>
+              <span className={styles.saveSep} aria-hidden="true">
+                ·
+              </span>
+              {lastAutoSavedAt ? (
+                <span className={styles.autoSaveText}>
+                  {w.autoSavedLabel}{" "}
+                  <time className={styles.autoSaveTime} dateTime={lastAutoSavedAt}>
+                    {formatSavedClock(lastAutoSavedAt, locale)}
+                  </time>
+                </span>
+              ) : (
+                <span className={styles.autoSaveText}>{w.autoSavePending}</span>
+              )}
+            </>
+          )}
         </p>
       </header>
       {exporting === "error" ? (
@@ -391,6 +588,33 @@ export function Workspace({ locale }: { locale: Locale }) {
           </div>
         </ErrorBoundary>
       ) : null}
+      {view === "overview" ? (
+        <ErrorBoundary
+          locale={locale}
+          scope="overview"
+          variant="workspace"
+          resetKeys={[id, view, previewKey, historyKey]}
+        >
+          <ProjectOverview
+            locale={locale}
+            project={load.project}
+            files={files}
+            refreshKey={previewKey}
+            historyKey={historyKey}
+            authorship={authorship}
+            changeHistory={changeHistory}
+            lastAutoSavedAt={lastAutoSavedAt}
+            onOpenFile={(path) => {
+              void select(path);
+              setView("code");
+            }}
+            onSnapshotSaved={() => {
+              setHistoryKey((k) => k + 1);
+              persistAutoSaveSnapshot();
+            }}
+          />
+        </ErrorBoundary>
+      ) : null}
       {view === "dashboard" ? (
         <ErrorBoundary
           locale={locale}
@@ -408,7 +632,10 @@ export function Workspace({ locale }: { locale: Locale }) {
               void select(path);
               setView("code");
             }}
-            onCheckpointCreated={() => setHistoryKey((k) => k + 1)}
+            onCheckpointCreated={() => {
+              setHistoryKey((k) => k + 1);
+              persistAutoSaveSnapshot();
+            }}
           />
         </ErrorBoundary>
       ) : null}
