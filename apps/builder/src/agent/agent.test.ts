@@ -341,9 +341,27 @@ describe("delete_file approval", () => {
 });
 
 describe("Plan mode", () => {
-  it("offers only read tools", () => {
-    expect(toolsForMode("plan").map((t) => t.name)).toEqual(["list_files", "read_file"]);
-    expect(toolsForMode("code")).toEqual(agentTools);
+  it("offers only read/research/planning tools and never write or delete tools", () => {
+    const planTools = toolsForMode("plan").map((t) => t.name);
+    expect(planTools).toContain("list_files");
+    expect(planTools).toContain("read_file");
+    expect(planTools).toContain("grep_search");
+    expect(planTools).toContain("glob_files");
+    expect(planTools).toContain("repo_overview");
+    expect(planTools).toContain("plan_exit");
+    expect(planTools).not.toContain("write_file");
+    expect(planTools).not.toContain("edit_file");
+    expect(planTools).not.toContain("apply_patch");
+    expect(planTools).not.toContain("delete_file");
+    expect(planTools).not.toContain("check_preview");
+
+    const codeTools = toolsForMode("code").map((t) => t.name);
+    expect(codeTools).toContain("write_file");
+    expect(codeTools).toContain("edit_file");
+    expect(codeTools).toContain("apply_patch");
+    expect(codeTools).toContain("delete_file");
+    expect(codeTools).toContain("check_preview");
+    expect(codeTools).toContain("task");
   });
 
   it("blocks writes and deletes in the executor, without asking for approval", async () => {
@@ -392,11 +410,15 @@ describe("Plan mode", () => {
 
 describe("Debug mode", () => {
   it("is read-only like Plan, plus checking the preview", async () => {
-    expect(toolsForMode("debug").map((t) => t.name)).toEqual([
-      "list_files",
-      "read_file",
-      "check_preview",
-    ]);
+    const debugTools = toolsForMode("debug").map((t) => t.name);
+    expect(debugTools).toContain("list_files");
+    expect(debugTools).toContain("read_file");
+    expect(debugTools).toContain("grep_search");
+    expect(debugTools).toContain("check_preview");
+    expect(debugTools).not.toContain("write_file");
+    expect(debugTools).not.toContain("edit_file");
+    expect(debugTools).not.toContain("apply_patch");
+    expect(debugTools).not.toContain("delete_file");
     const r = await runTool(store, projectId, call("write_file", { path: "z.txt", content: "z" }), {
       mode: "debug",
     });

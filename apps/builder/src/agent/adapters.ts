@@ -3,6 +3,7 @@ import { authHeaders, classifyStatus } from "../providers/connect";
 import type { ProviderId } from "../providers/registry";
 import { ProviderStreamError } from "../providers/stream";
 import { readSse } from "../providers/sse";
+import type { PersistedTurn } from "./kilocode/session";
 import type { ToolCall, ToolResult, ToolSpec } from "./tools";
 
 /** One model turn: any text it said and the tool calls it wants run. */
@@ -11,20 +12,16 @@ export interface StepResult {
   calls: ToolCall[];
 }
 
-/**
- * A provider-native conversation. Messages stay in each provider's own format so nothing the
- * provider needs echoed back (Gemini thought signatures, Anthropic blocks) is lost in translation.
- */
 /** Live progress inside one streamed turn: text so far, or a tool call's raw JSON arguments so far. */
 export type StepDelta =
   | { type: "text"; text: string }
   | { type: "tool"; index: number; name: string; args: string };
 
+/**
+ * A provider-native conversation. Messages stay in each provider's own format so nothing the
+ * provider needs echoed back (Gemini thought signatures, Anthropic blocks) is lost in translation.
+ */
 export interface Conversation {
-  /**
-   * One model turn. With `onDelta` the request is streamed and progress is reported as it
-   * arrives; the result is the same either way.
-   */
   step(signal?: AbortSignal, onDelta?: (d: StepDelta) => void): Promise<StepResult>;
   addResults(results: ToolResult[]): void;
 }
@@ -35,13 +32,22 @@ export interface ConversationOptions {
   model: string;
   system: string;
   prompt: string;
-  /** Images attached to the first user turn (INTAKE-03). */
+  /** Optional prior multi-turn session history (Kilo Code persistent session memory). */
+  history?: readonly PersistedTurn[];
+  /** Optional compacted summary injected ahead of recent turns. */
+  compactedSummary?: string;
+  /** Images attached to the current user turn (INTAKE-03). */
   images?: ChatImage[];
   tools: ToolSpec[];
   fetchImpl?: typeof fetch;
 }
 
 const emptySchema = { type: "object", properties: {}, required: [] as string[] };
+
+function effectiveSystem(o: ConversationOptions): string {
+  if (!o.compactedSummary?.trim()) return o.system;
+  return `${o.system}\n\n${o.compactedSummary.trim()}`;
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- provider JSON is checked field by field */
 async function postJson(
@@ -75,7 +81,6 @@ async function postJson(
     }
   }
   if (res.status === 400 || res.status === 404 || res.status === 422) {
-    // Usually a model without tool support or a rejected schema; Gemini also uses 400 for bad keys.
     const text = await res.text().catch(() => "");
     throw new ProviderStreamError(/API_KEY_INVALID/.test(text) ? "invalid-key" : "rejected");
   }
@@ -158,8 +163,10 @@ function openAiCompatible(o: ConversationOptions): Conversation {
     o.provider === "openai"
       ? "https://api.openai.com/v1/chat/completions"
       : "https://openrouter.ai/api/v1/chat/completions";
+  const prior = (o.history ?? []).map((t) => ({ role: t.role, content: t.content }));
   const messages: any[] = [
-    { role: "system", content: o.system },
+    { role: "system", content: effectiveSystem(o) },
+    ...prior,
     openAiMessage({ role: "user", content: o.prompt, images: o.images }),
   ];
   const tools = o.tools.map((t) => ({
@@ -245,7 +252,12 @@ function openAiCompatible(o: ConversationOptions): Conversation {
 }
 
 function anthropic(o: ConversationOptions): Conversation {
-  const messages: any[] = [anthropicMessage({ role: "user", content: o.prompt, images: o.images })];
+  const sys = effectiveSystem(o);
+  const prior = (o.history ?? []).map((t) => ({ role: t.role, content: t.content }));
+  const messages: any[] = [
+    ...prior,
+    anthropicMessage({ role: "user", content: o.prompt, images: o.images }),
+  ];
   const tools = o.tools.map((t) => ({
     name: t.name,
     description: t.description,
@@ -261,7 +273,7 @@ function anthropic(o: ConversationOptions): Conversation {
         for await (const j of postSse(
           o,
           "https://api.anthropic.com/v1/messages",
-          { model: o.model, max_tokens: 16384, system: o.system, messages, tools, stream: true },
+          { model: o.model, max_tokens: 16384, system: sys, messages, tools, stream: true },
           signal,
         )) {
           const i = Number(j.index);
@@ -304,7 +316,7 @@ function anthropic(o: ConversationOptions): Conversation {
       const j = await postJson(
         o,
         "https://api.anthropic.com/v1/messages",
-        { model: o.model, max_tokens: 16384, system: o.system, messages, tools },
+        { model: o.model, max_tokens: 16384, system: sys, messages, tools },
         signal,
       );
       const content: any[] = Array.isArray(j?.content) ? j.content : [];
@@ -334,7 +346,13 @@ function anthropic(o: ConversationOptions): Conversation {
 }
 
 function gemini(o: ConversationOptions): Conversation {
+  const sys = effectiveSystem(o);
+  const prior = (o.history ?? []).map((t) => ({
+    role: t.role === "assistant" ? "model" : "user",
+    parts: [{ text: t.content }],
+  }));
   const contents: any[] = [
+    ...prior,
     {
       role: "user",
       parts: [
@@ -352,7 +370,7 @@ function gemini(o: ConversationOptions): Conversation {
   return {
     async step(signal, onDelta) {
       const body = {
-        systemInstruction: { parts: [{ text: o.system }] },
+        systemInstruction: { parts: [{ text: sys }] },
         contents,
         tools: [{ functionDeclarations }],
       };
@@ -369,7 +387,7 @@ function gemini(o: ConversationOptions): Conversation {
           const c = j?.candidates?.[0];
           if (c?.finishReason) finished = true;
           for (const p of Array.isArray(c?.content?.parts) ? c.content.parts : []) {
-            parts.push(p); // kept whole: thought signatures must be echoed back
+            parts.push(p);
             if (typeof p.text === "string" && !p.thought) {
               text += p.text;
               onDelta({ type: "text", text });
@@ -396,19 +414,10 @@ function gemini(o: ConversationOptions): Conversation {
             })),
         };
       }
-      const j = await postJson(
-        o,
-        url,
-        {
-          systemInstruction: { parts: [{ text: o.system }] },
-          contents,
-          tools: [{ functionDeclarations }],
-        },
-        signal,
-      );
+      const j = await postJson(o, url, body, signal);
       const content = j?.candidates?.[0]?.content;
       const parts: any[] = Array.isArray(content?.parts) ? content.parts : [];
-      contents.push({ role: "model", parts }); // echoed whole, thought signatures included
+      contents.push({ role: "model", parts });
       return {
         text: parts
           .filter((p) => typeof p.text === "string" && !p.thought)

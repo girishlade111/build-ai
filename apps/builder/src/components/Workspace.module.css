@@ -295,6 +295,14 @@
   gap: 8px;
   align-items: flex-end;
 }
+.agentForm > button:not(.agentButton) {
+  color: #e9e7df;
+  border-color: #5a574c;
+}
+.agentForm > button:not(.agentButton):hover:not(:disabled) {
+  border-color: #8c897d;
+  color: #f7f7f4;
+}
 .agentInput {
   flex: 1;
   min-width: 0;
@@ -452,19 +460,28 @@
   font-size: 13px;
   color: #5a574c;
 }
+.agentToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .agentModes {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 .agentMode {
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 30px;
+  padding: 0 10px;
   border: 1px solid #5a574c;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: #e9e7df;
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
+  white-space: nowrap;
   cursor: pointer;
 }
 .agentMode[aria-pressed="true"] {
@@ -478,6 +495,171 @@
 .agentMode:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+.agentMetaControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.agentSelect {
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid #5a574c;
+  border-radius: 6px;
+  background: #24231e;
+  color: #e9e7df;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.agentSelect:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.agentSessionStat {
+  font-size: 12px;
+  color: #b9b6aa;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.agentGhostButton {
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid #3a382f;
+  border-radius: 6px;
+  background: transparent;
+  color: #d8d5c8;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.agentGhostButton:hover:not(:disabled) {
+  border-color: #5a574c;
+  color: #f7f7f4;
+}
+.agentGhostButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.agentGhostButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.agentTodos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid #3a382f;
+  border-radius: 8px;
+  background: #1f1e1a;
+  font-size: 12px;
+}
+.agentTodosHead {
+  font-weight: 600;
+  color: #e9e7df;
+  font-variant-numeric: tabular-nums;
+}
+.agentTodoList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.agentTodoList li {
+  color: #d8d5c8;
+}
+.agentTodoList li[data-status="completed"] {
+  color: #8fb88f;
+  text-decoration: line-through;
+}
+.agentTodoList li[data-status="in_progress"] {
+  color: #f5b08f;
+  font-weight: 500;
+}
+.agentTodoList li[data-status="cancelled"] {
+  color: #8c897d;
+  text-decoration: line-through;
+}
+.agentQuestion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  background: #2b2721;
+}
+.agentQuestion p {
+  margin: 0;
+  font-size: 13px;
+  color: #f7f7f4;
+}
+.agentQuestionOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.agentQuestionInputRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.agentQuestionInput {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #5a574c;
+  border-radius: 6px;
+  background: #1f1e1a;
+  color: #f7f7f4;
+  font: inherit;
+  font-size: 13px;
+}
+.agentCustomPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid #3a382f;
+  border-radius: 8px;
+  background: #1f1e1a;
+}
+.agentCustomLabel {
+  font-size: 12px;
+  color: #b9b6aa;
+}
+.agentCustomInput {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #5a574c;
+  border-radius: 6px;
+  background: #24231e;
+  color: #f7f7f4;
+  font: inherit;
+  font-size: 12px;
+  resize: vertical;
+}
+.agentCustomPerms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 12px;
+  color: #d8d5c8;
+}
+.agentCustomPerms label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.agentCustomPerms input {
+  accent-color: var(--color-primary);
 }
 .follow {
   display: flex;

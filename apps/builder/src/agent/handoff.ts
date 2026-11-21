@@ -1,7 +1,8 @@
 import type { ChatImage } from "../providers/stream";
+import type { AgentMode } from "./tools";
 
 /**
- * Hands a Code- or Plan-mode prompt from the welcome composer to the new project's workspace.
+ * Hands a prompt from the welcome composer to the new project's workspace.
  * Kept in this tab's sessionStorage only, and removed as soon as the workspace takes it,
  * so a reload never re-runs the agent.
  */
@@ -10,11 +11,13 @@ const prefix = "ladestack.agentTask.";
 type Storage = Pick<globalThis.Storage, "getItem" | "setItem" | "removeItem">;
 
 export interface PendingTask {
-  mode: "code" | "plan";
+  mode: AgentMode;
   prompt: string;
   /** Attached images. Too large for sessionStorage, so they stay in this tab's memory only. */
   images?: ChatImage[];
 }
+
+const VALID_MODES = new Set<AgentMode>(["code", "plan", "debug", "ask", "orchestrator", "custom"]);
 
 const pendingImages = new Map<string, ChatImage[]>();
 
@@ -46,7 +49,11 @@ export function takePendingTask(
       if (parsed && typeof parsed === "object") {
         const p = parsed as Partial<PendingTask>;
         if (typeof p.prompt !== "string") return null;
-        task = { mode: p.mode === "plan" ? "plan" : "code", prompt: p.prompt };
+        const mode: AgentMode =
+          typeof p.mode === "string" && VALID_MODES.has(p.mode as AgentMode)
+            ? (p.mode as AgentMode)
+            : "code";
+        task = { mode, prompt: p.prompt };
       }
     } catch {
       // Not JSON: a plain prompt.
