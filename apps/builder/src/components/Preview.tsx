@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Bug, ExternalLink, Monitor, RefreshCw, Smartphone, Tablet, Trash2 } from "lucide-react";
 import type { Locale } from "@ladestack/i18n";
 import { workspace } from "../i18n/workspace";
 import {
@@ -17,15 +18,14 @@ import {
   saveViewport,
   type Viewport,
   viewportWidth,
-  viewports,
 } from "../preview/viewport";
 import { getProjectStore } from "../storage/client";
+import { ActionButton, BrowserFrame, SegmentedControl } from "./ui";
 import styles from "./Workspace.module.css";
 
 /**
  * Project preview (ADR 0016). Plain HTML/CSS/JS projects run on the isolated preview origin in a
- * sandboxed frame; files are sent with postMessage to that origin only. Projects with a
- * package.json need the runtime, which is a later unit.
+ * sandboxed frame; files are sent with postMessage to that origin only.
  */
 export function Preview({
   locale,
@@ -128,60 +128,59 @@ export function Preview({
   if (!previewOrigin) return <Notice text={w.previewOff} />;
   if (kind === "no-entry") return <Notice text={w.previewNoEntry} />;
 
+  const viewportItems: ReadonlyArray<{ value: Viewport; label: string; icon: React.ReactNode }> = [
+    { value: "desktop", label: w.viewportDesktop, icon: <Monitor size={13} aria-hidden="true" /> },
+    { value: "tablet", label: w.viewportTablet, icon: <Tablet size={13} aria-hidden="true" /> },
+    { value: "mobile", label: w.viewportMobile, icon: <Smartphone size={13} aria-hidden="true" /> },
+  ];
+
+  const previewUrl = previewPageUrl(previewOrigin ?? "", session);
+
   return (
     <div className={styles.previewPane}>
       <div className={styles.previewBar}>
-        {loaded ? null : <span role="status">{w.previewLoading}</span>}
-        {kind === "bundle" ? (
-          <span className={styles.previewNote}>{w.previewBundleNote}</span>
-        ) : null}
-        <div className={styles.viewports} role="group" aria-label={w.viewportLabel}>
-          {viewports.map((v) => (
-            <button
-              key={v}
-              type="button"
-              aria-pressed={viewport === v}
-              onClick={() => {
-                setViewport(v);
-                saveViewport(typeof window === "undefined" ? undefined : window.sessionStorage, v);
-              }}
-            >
-              {
-                { desktop: w.viewportDesktop, tablet: w.viewportTablet, mobile: w.viewportMobile }[
-                  v
-                ]
-              }
-            </button>
-          ))}
+        <div>
+          {loaded ? null : <span role="status">{w.previewLoading}</span>}
+          {kind === "bundle" ? (
+            <span className={styles.previewNote}>{w.previewBundleNote}</span>
+          ) : null}
         </div>
-        <button
-          type="button"
-          className={styles.exportButton}
-          disabled={!loaded}
-          title={w.openPreviewTabHint}
-          onClick={() =>
-            window.open(
-              previewPageUrl(previewOrigin ?? "", session),
-              "_blank",
-              "noopener,noreferrer",
-            )
-          }
-        >
-          {w.openPreviewTab}
-        </button>
-        <button
-          type="button"
-          className={styles.exportButton}
-          onClick={() => {
-            setReady(false);
-            setLoaded(false);
-            setFrameKey((k) => k + 1);
-          }}
-        >
-          {w.reloadPreview}
-        </button>
+        <div className={styles.previewBarRight}>
+          <SegmentedControl
+            items={viewportItems}
+            value={viewport}
+            ariaLabel={w.viewportLabel}
+            onChange={(v) => {
+              setViewport(v);
+              saveViewport(typeof window === "undefined" ? undefined : window.sessionStorage, v);
+            }}
+          />
+          <ActionButton
+            variant="outline"
+            compact
+            disabled={!loaded}
+            title={w.openPreviewTabHint}
+            onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}
+          >
+            <ExternalLink size={13} aria-hidden="true" />
+            <span>{w.openPreviewTab}</span>
+          </ActionButton>
+          <ActionButton
+            variant="outline"
+            compact
+            onClick={() => {
+              setReady(false);
+              setLoaded(false);
+              setFrameKey((k) => k + 1);
+            }}
+          >
+            <RefreshCw size={13} aria-hidden="true" />
+            <span>{w.reloadPreview}</span>
+          </ActionButton>
+        </div>
       </div>
-      <div className={styles.frameStage}>
+
+      <BrowserFrame address={previewUrl}>
         <iframe
           key={frameKey}
           ref={frame}
@@ -193,7 +192,8 @@ export function Preview({
           referrerPolicy="no-referrer"
           style={{ width: viewportWidth[viewport] }}
         />
-      </div>
+      </BrowserFrame>
+
       <details className={styles.console}>
         <summary>
           {w.console} ({logs.length})
@@ -214,17 +214,15 @@ export function Preview({
         )}
         <div className={styles.consoleActions}>
           {debugPrompt && onDebug ? (
-            <button
-              type="button"
-              className={styles.exportButton}
-              onClick={() => onDebug(debugPrompt)}
-            >
-              {w.debugErrors}
-            </button>
+            <ActionButton variant="secondary" compact onClick={() => onDebug(debugPrompt)}>
+              <Bug size={13} aria-hidden="true" />
+              <span>{w.debugErrors}</span>
+            </ActionButton>
           ) : null}
-          <button type="button" className={styles.exportButton} onClick={() => setLogs([])}>
-            {w.consoleClear}
-          </button>
+          <ActionButton variant="ghost" compact onClick={() => setLogs([])}>
+            <Trash2 size={13} aria-hidden="true" />
+            <span>{w.consoleClear}</span>
+          </ActionButton>
         </div>
       </details>
     </div>

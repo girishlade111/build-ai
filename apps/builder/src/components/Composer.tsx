@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { ArrowUp, Bug, Code2, ListChecks, MessageSquare, Square } from "lucide-react";
 import { alphaAgentModes } from "@ladestack/shared-types";
 import {
   canSubmit,
@@ -35,6 +36,7 @@ import {
 import { composeUserMessage } from "../attachments/attach";
 import { AttachButton, AttachmentList, useAttachments } from "./Attachments";
 import { RecoveryActions } from "./RecoveryActions";
+import { BorderBeam, ShimmerButton } from "./ui";
 
 /** Mode names are product terms and stay in English; their hints are localized. */
 const modeNames: Record<AlphaMode, string> = {
@@ -42,6 +44,13 @@ const modeNames: Record<AlphaMode, string> = {
   plan: "Plan",
   ask: "Ask",
   debug: "Debug",
+};
+
+const modeIcons: Record<AlphaMode, ReactNode> = {
+  code: <Code2 size={14} aria-hidden="true" />,
+  plan: <ListChecks size={14} aria-hidden="true" />,
+  ask: <MessageSquare size={14} aria-hidden="true" />,
+  debug: <Bug size={14} aria-hidden="true" />,
 };
 
 const streamErrorKey: Record<
@@ -222,98 +231,116 @@ export function Composer({ s, locale }: { s: ShellStrings; locale: Locale }) {
   }
 
   return (
-    <form className={styles.composer} onSubmit={onSubmit} noValidate {...at.dropProps}>
-      <label htmlFor={ids.prompt} className={styles.srOnly}>
-        {s.composerLabel}
-      </label>
-      <textarea
-        id={ids.prompt}
-        ref={textarea}
-        className={styles.prompt}
-        rows={3}
-        placeholder={s.placeholder}
-        value={draft.prompt}
-        aria-describedby={`${ids.hint} ${ids.status}`}
-        aria-invalid={tooLong || undefined}
-        onChange={(e) => {
-          setNotice(null);
-          setDraft((d) => ({ ...d, prompt: e.target.value }));
-        }}
-        onKeyDown={onKeyDown}
-      />
-      <AttachmentList at={at} check={check} model={current?.model} />
-      <div className={styles.row}>
-        <fieldset className={styles.modes}>
-          <legend className={styles.srOnly}>{s.modeLabel}</legend>
-          {alphaAgentModes.map((m) => (
-            <label key={m} className={styles.mode} title={hints[m]}>
-              <input
-                type="radio"
-                name="mode"
-                value={m}
-                checked={draft.mode === m}
-                onChange={() => setDraft((d) => ({ ...d, mode: m }))}
-              />
-              <span>{modeNames[m]}</span>
-            </label>
-          ))}
-        </fieldset>
-        <AttachButton at={at} disabled={busy || creating} />
-        {busy ? (
-          <button type="button" className={styles.submit} onClick={() => abort.current?.abort()}>
-            {a.stop}
-          </button>
-        ) : (
-          <button
-            type="submit"
-            className={styles.submit}
-            disabled={!canSubmit(draft.prompt) || creating}
-          >
-            {s.submit}
-          </button>
-        )}
-      </div>
-      <p id={ids.hint} className={styles.hint}>
-        {hints[draft.mode]} · {s.shortcut}
-      </p>
-      <p id={ids.status} className={styles.status} role="status" aria-live="polite">
-        {tooLong ? s.tooLong : notice}
-      </p>
-      {turn ? (
-        <section
-          className={styles.answer}
-          aria-label={a.answer.replace("{provider}", turn.provider)}
-        >
-          <p className={styles.answerLabel}>{a.question}</p>
-          <p className={styles.answerQuestion}>{turn.question}</p>
-          <p className={styles.answerLabel}>{a.answer.replace("{provider}", turn.provider)}</p>
-          <div className={styles.answerText} aria-live="polite" aria-busy={busy}>
-            {turn.state === "waiting"
-              ? a.waiting.replace("{provider}", turn.provider)
-              : turn.answer}
+    <div className={styles.composerShell}>
+      <BorderBeam active={busy || creating || draft.prompt.trim().length > 0}>
+        <form className={styles.composer} onSubmit={onSubmit} noValidate {...at.dropProps}>
+          <label htmlFor={ids.prompt} className={styles.srOnly}>
+            {s.composerLabel}
+          </label>
+          <textarea
+            id={ids.prompt}
+            ref={textarea}
+            className={styles.prompt}
+            rows={3}
+            placeholder={s.placeholder}
+            value={draft.prompt}
+            aria-describedby={`${ids.hint} ${ids.status}`}
+            aria-invalid={tooLong || undefined}
+            onChange={(e) => {
+              setNotice(null);
+              setDraft((d) => ({ ...d, prompt: e.target.value }));
+            }}
+            onKeyDown={onKeyDown}
+          />
+          <AttachmentList at={at} check={check} model={current?.model} />
+          <div className={styles.composerDivider} aria-hidden="true" />
+          <div className={styles.row}>
+            <fieldset className={styles.modes}>
+              <legend className={styles.srOnly}>{s.modeLabel}</legend>
+              {alphaAgentModes.map((m) => (
+                <label key={m} className={styles.mode} title={hints[m]}>
+                  <input
+                    type="radio"
+                    name="mode"
+                    value={m}
+                    checked={draft.mode === m}
+                    onChange={() => setDraft((d) => ({ ...d, mode: m }))}
+                  />
+                  <span>
+                    {modeIcons[m]}
+                    {modeNames[m]}
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+
+            <div className={styles.composerRight}>
+              <AttachButton at={at} disabled={busy || creating} />
+              {busy ? (
+                <ShimmerButton type="button" onClick={() => abort.current?.abort()}>
+                  <Square size={13} aria-hidden="true" />
+                  <span>{a.stop}</span>
+                </ShimmerButton>
+              ) : (
+                <ShimmerButton
+                  type="submit"
+                  disabled={!canSubmit(draft.prompt) || creating}
+                >
+                  <span>{s.submit}</span>
+                  <ArrowUp size={15} aria-hidden="true" />
+                </ShimmerButton>
+              )}
+            </div>
           </div>
-          {turn.state === "stopped" || turn.state === "interrupted" || turn.state === "failed" ? (
-            <p className={styles.answerError} role="alert">
-              {turn.state === "stopped"
-                ? a.stopped
-                : turn.state === "interrupted"
-                  ? a.interrupted
-                  : turn.error}
-              {turn.state !== "stopped" ? (
-                <RecoveryActions
-                  code={turn.code ?? "interrupted"}
-                  retry={submit}
-                  settings={`${localePrefix(locale)}/settings`}
-                  t={t}
-                  disabled={busy}
-                  className={styles.answerAction}
-                />
-              ) : null}
+
+          <div className={styles.composerFooter}>
+            <p id={ids.hint} className={styles.hint}>
+              {hints[draft.mode]} · {s.shortcut}
             </p>
+            <p id={ids.status} className={styles.status} role="status" aria-live="polite">
+              {tooLong ? s.tooLong : notice}
+            </p>
+          </div>
+
+          {turn ? (
+            <section
+              className={styles.answer}
+              aria-label={a.answer.replace("{provider}", turn.provider)}
+            >
+              <p className={styles.answerLabel}>{a.question}</p>
+              <p className={styles.answerQuestion}>{turn.question}</p>
+              <p className={styles.answerLabel}>{a.answer.replace("{provider}", turn.provider)}</p>
+              <div className={styles.answerText} aria-live="polite" aria-busy={busy}>
+                {turn.state === "waiting"
+                  ? a.waiting.replace("{provider}", turn.provider)
+                  : turn.answer}
+              </div>
+              {turn.state === "stopped" ||
+              turn.state === "interrupted" ||
+              turn.state === "failed" ? (
+                <p className={styles.answerError} role="alert">
+                  {turn.state === "stopped"
+                    ? a.stopped
+                    : turn.state === "interrupted"
+                      ? a.interrupted
+                      : turn.error}
+                  {turn.state !== "stopped" ? (
+                    <RecoveryActions
+                      code={turn.code ?? "interrupted"}
+                      retry={submit}
+                      settings={`${localePrefix(locale)}/settings`}
+                      t={t}
+                      disabled={busy}
+                      className={styles.answerAction}
+                    />
+                  ) : null}
+                </p>
+              ) : null}
+              <p className={styles.answerNote}>{a.notSaved}</p>
+            </section>
           ) : null}
-          <p className={styles.answerNote}>{a.notSaved}</p>
-        </section>
-      ) : null}
-    </form>
+        </form>
+      </BorderBeam>
+    </div>
   );
 }

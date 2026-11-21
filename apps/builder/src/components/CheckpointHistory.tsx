@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState } from "react";
+import { BookmarkPlus, History, RotateCcw } from "lucide-react";
 import { localeInfo, type Locale } from "@ladestack/i18n";
 import type { Checkpoint } from "@ladestack/shared-types";
 import { history } from "../i18n/history";
 import { countText } from "../i18n/plural";
 import { formatCheckpointTime } from "../history/time";
 import { getProjectStore } from "../storage/client";
+import { ActionButton, ShimmerButton } from "./ui";
 import styles from "./Workspace.module.css";
 
 type Notice = { text: string; error: boolean } | null;
@@ -93,15 +95,16 @@ export function CheckpointHistory({
 
   return (
     <>
-      <button
-        type="button"
-        className={styles.exportButton}
+      <ActionButton
+        variant="outline"
+        compact
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((o) => !o)}
       >
-        {h.history}
-      </button>
+        <History size={13} aria-hidden="true" />
+        <span>{h.history}</span>
+      </ActionButton>
       <section
         id={panelId}
         className={styles.history}
@@ -110,14 +113,10 @@ export function CheckpointHistory({
       >
         <div className={styles.historyHead}>
           <h2 id={`${panelId}-title`}>{h.title}</h2>
-          <button
-            type="button"
-            className={styles.exportButton}
-            onClick={() => void saveNow()}
-            disabled={busy || working}
-          >
-            {working ? h.saving : h.saveNow}
-          </button>
+          <ShimmerButton compact onClick={() => void saveNow()} disabled={busy || working}>
+            <BookmarkPlus size={13} aria-hidden="true" />
+            <span>{working ? h.saving : h.saveNow}</span>
+          </ShimmerButton>
         </div>
         <p className={styles.historyHint}>{busy ? h.busy : h.current}</p>
         {notice ? (
@@ -144,14 +143,15 @@ export function CheckpointHistory({
                     {countText(locale, h.files, Object.keys(c.manifest).length)}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className={styles.exportButton}
+                <ActionButton
+                  variant="outline"
+                  compact
                   onClick={() => void restore(c.id)}
                   disabled={busy || working}
                 >
-                  {h.restore}
-                </button>
+                  <RotateCcw size={12} aria-hidden="true" />
+                  <span>{h.restore}</span>
+                </ActionButton>
               </li>
             ))}
           </ol>

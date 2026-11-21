@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "@ladestack/design-tokens/tokens.css";
+import "@fontsource-variable/plus-jakarta-sans";
+import "@fontsource-variable/jetbrains-mono";
 import "../globals.css";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
 

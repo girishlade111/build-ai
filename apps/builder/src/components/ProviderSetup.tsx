@@ -1,12 +1,14 @@
 "use client";
 
 import { useId, useRef, useState, type FormEvent } from "react";
+import { Check, Eye, EyeOff, KeyRound, Loader2, PlugZap, Trash2, X } from "lucide-react";
 import type { Locale } from "@ladestack/i18n";
 import { providerStrings, type ProviderStrings } from "../i18n/providers";
 import { testConnection, type ConnectError, type ModelInfo } from "../providers/connect";
 import { looksLikeKey, providerIds, providers, type ProviderId } from "../providers/registry";
 import { setSession } from "../providers/session";
 import { useProviderSession } from "../providers/useProviderSession";
+import { ActionButton, ShimmerButton } from "./ui";
 import styles from "./ProviderSetup.module.css";
 
 const errorKey: Record<ConnectError | "bad-key", keyof ProviderStrings> = {
@@ -103,12 +105,19 @@ export function ProviderSetup({ locale, idleLabel }: { locale: Locale; idleLabel
   const name = providers[provider].name;
   return (
     <>
-      <button type="button" className={styles.chip} onClick={open} data-connected={!!session}>
-        <span className={styles.dot} aria-hidden="true" />
-        {session
-          ? fill(t.connected, { provider: providers[session.provider].name, model: session.model })
-          : idleLabel}
+      <button type="button" className={styles.trigger} onClick={open} data-connected={!!session}>
+        {session ? (
+          <span className={styles.liveDot} aria-hidden="true" />
+        ) : (
+          <KeyRound size={14} aria-hidden="true" />
+        )}
+        <span className={styles.triggerLabel}>
+          {session
+            ? fill(t.connected, { provider: providers[session.provider].name, model: session.model })
+            : idleLabel}
+        </span>
       </button>
+
       <dialog
         ref={dialog}
         className={styles.dialog}
@@ -116,10 +125,24 @@ export function ProviderSetup({ locale, idleLabel }: { locale: Locale; idleLabel
         onClose={() => abort.current?.abort()}
       >
         <form className={styles.form} onSubmit={test}>
-          <h2 id={`${ids}-title`} className={styles.title}>
-            {t.title}
-          </h2>
-          <p className={styles.text}>{t.intro}</p>
+          <div className={styles.dialogHeader}>
+            <div>
+              <h2 id={`${ids}-title`} className={styles.title}>
+                {t.title}
+              </h2>
+              <p className={styles.text} style={{ marginTop: 4 }}>
+                {t.intro}
+              </p>
+            </div>
+            <button
+              type="button"
+              className={styles.closeIconBtn}
+              aria-label={t.close}
+              onClick={close}
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
 
           <fieldset className={styles.providers}>
             <legend className={styles.label}>{t.provider}</legend>
@@ -131,45 +154,65 @@ export function ProviderSetup({ locale, idleLabel }: { locale: Locale; idleLabel
                   checked={provider === id}
                   onChange={() => chooseProvider(id)}
                 />
-                {providers[id].name}
+                <span>{providers[id].name}</span>
+                {provider === id ? (
+                  <Check size={14} className={styles.optionCheck} aria-hidden="true" />
+                ) : null}
               </label>
             ))}
           </fieldset>
 
-          <label className={styles.label} htmlFor={`${ids}-key`}>
-            {t.key}
-          </label>
-          <div className={styles.keyRow}>
-            <input
-              id={`${ids}-key`}
-              className={styles.input}
-              type={reveal ? "text" : "password"}
-              value={key}
-              onChange={(e) => {
-                setKey(e.target.value);
-                setModels(null);
-                setError(null);
-              }}
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              aria-describedby={`${ids}-keynote`}
-              aria-invalid={error === "bad-key" || error === "invalid-key"}
-            />
-            <button type="button" className={styles.ghost} onClick={() => setReveal((r) => !r)}>
-              {reveal ? t.hide : t.show}
-            </button>
+          <div className={styles.fieldGroup}>
+            <label className={styles.label} htmlFor={`${ids}-key`}>
+              {t.key}
+            </label>
+            <div className={styles.keyRow}>
+              <input
+                id={`${ids}-key`}
+                className={styles.input}
+                type={reveal ? "text" : "password"}
+                value={key}
+                placeholder="sk-..."
+                onChange={(e) => {
+                  setKey(e.target.value);
+                  setModels(null);
+                  setError(null);
+                }}
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                aria-describedby={`${ids}-keynote`}
+                aria-invalid={error === "bad-key" || error === "invalid-key"}
+              />
+              <ActionButton
+                type="button"
+                variant="outline"
+                onClick={() => setReveal((r) => !r)}
+                aria-label={reveal ? t.hide : t.show}
+              >
+                {reveal ? <EyeOff size={14} aria-hidden="true" /> : <Eye size={14} aria-hidden="true" />}
+                <span>{reveal ? t.hide : t.show}</span>
+              </ActionButton>
+            </div>
+            <p id={`${ids}-keynote`} className={styles.small}>
+              {t.keyNote}{" "}
+              <a href={providers[provider].keyUrl} target="_blank" rel="noopener noreferrer">
+                {fill(t.getKey, { provider: name })}
+              </a>
+            </p>
           </div>
-          <p id={`${ids}-keynote`} className={styles.small}>
-            {t.keyNote}{" "}
-            <a href={providers[provider].keyUrl} target="_blank" rel="noopener noreferrer">
-              {fill(t.getKey, { provider: name })}
-            </a>
-          </p>
 
-          <button type="submit" className={styles.secondary} disabled={busy || key.trim() === ""}>
-            {busy ? t.testing : t.test}
-          </button>
+          <div className={styles.testRow}>
+            <ActionButton type="submit" variant="secondary" disabled={busy || key.trim() === ""}>
+              {busy ? (
+                <Loader2 size={14} aria-hidden="true" />
+              ) : (
+                <PlugZap size={14} aria-hidden="true" />
+              )}
+              <span>{busy ? t.testing : t.test}</span>
+            </ActionButton>
+          </div>
+
           {error ? (
             <p className={styles.error} role="alert">
               {t[errorKey[error]]}
@@ -177,7 +220,7 @@ export function ProviderSetup({ locale, idleLabel }: { locale: Locale; idleLabel
           ) : null}
 
           {models ? (
-            <>
+            <div className={styles.fieldGroup}>
               <label className={styles.label} htmlFor={`${ids}-model`}>
                 {t.model}
               </label>
@@ -197,27 +240,23 @@ export function ProviderSetup({ locale, idleLabel }: { locale: Locale; idleLabel
               <p id={`${ids}-modelhint`} className={styles.small}>
                 {t.modelHint}
               </p>
-            </>
+            </div>
           ) : null}
 
           <div className={styles.actions}>
             {session ? (
-              <button type="button" className={styles.ghost} onClick={forget}>
-                {t.remove}
-              </button>
+              <ActionButton type="button" variant="danger" compact onClick={forget}>
+                <Trash2 size={13} aria-hidden="true" />
+                <span>{t.remove}</span>
+              </ActionButton>
             ) : null}
             <span className={styles.spacer} />
-            <button type="button" className={styles.ghost} onClick={close}>
+            <ActionButton type="button" variant="ghost" onClick={close}>
               {t.close}
-            </button>
-            <button
-              type="button"
-              className={styles.primary}
-              onClick={save}
-              disabled={!models || !model}
-            >
+            </ActionButton>
+            <ShimmerButton type="button" onClick={save} disabled={!models || !model}>
               {t.save}
-            </button>
+            </ShimmerButton>
           </div>
         </form>
       </dialog>

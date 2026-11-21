@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { localePrefix, type Locale } from "@ladestack/i18n";
 import { createConversation } from "../agent/adapters";
 import type { ChatImage } from "../providers/stream";
@@ -54,9 +63,27 @@ import { checkAttachments } from "../providers/capability";
 import { useProviderSession } from "../providers/useProviderSession";
 import { getProjectStore } from "../storage/client";
 import styles from "./Workspace.module.css";
+import {
+  ArrowUp,
+  Bug,
+  CheckCircle2,
+  Circle,
+  CircleDot,
+  Code2,
+  KeyRound,
+  ListChecks,
+  MessageSquare,
+  Minimize2,
+  RotateCcw,
+  Sliders,
+  Square,
+  Workflow,
+  XCircle,
+} from "lucide-react";
 import { composeUserMessage } from "../attachments/attach";
 import { AttachButton, AttachmentList, useAttachments } from "./Attachments";
 import { RecoveryActions } from "./RecoveryActions";
+import { ActionButton, BorderBeam, ShimmerButton } from "./ui";
 
 type LogEntry =
   | { kind: "you"; text: string }
@@ -604,11 +631,16 @@ export function AgentPanel({
 
   if (!session) {
     return (
-      <section className={styles.agent} aria-label={a.label}>
-        <p className={styles.agentNote}>
-          {a.needProvider} <Link href={`${localePrefix(locale)}/`}>{a.startPage}</Link>
-        </p>
-      </section>
+      <div className={styles.agentOuter}>
+        <section className={styles.agentDisconnected} aria-label={a.label}>
+          <p className={styles.agentNote}>
+            <KeyRound size={15} aria-hidden="true" />
+            <span>
+              {a.needProvider} <Link href={`${localePrefix(locale)}/`}>{a.startPage}</Link>
+            </span>
+          </p>
+        </section>
+      </div>
     );
   }
 
@@ -619,6 +651,15 @@ export function AgentPanel({
     ask: a.modeAsk,
     orchestrator: a.modeOrchestrator,
     custom: a.modeCustom,
+  };
+
+  const modeIcons: Record<AgentMode, ReactNode> = {
+    code: <Code2 size={13} aria-hidden="true" />,
+    plan: <ListChecks size={13} aria-hidden="true" />,
+    debug: <Bug size={13} aria-hidden="true" />,
+    ask: <MessageSquare size={13} aria-hidden="true" />,
+    orchestrator: <Workflow size={13} aria-hidden="true" />,
+    custom: <Sliders size={13} aria-hidden="true" />,
   };
 
   const modePlaceholders: Record<AgentMode, string> = {
@@ -652,356 +693,354 @@ export function AgentPanel({
   const completedTodos = todos.filter((item) => item.status === "completed").length;
 
   return (
-    <section className={styles.agent} aria-label={a.label}>
-      {todos.length > 0 ? (
-        <div className={styles.agentTodos} aria-label={a.todosLabel}>
-          <span className={styles.agentTodosHead}>
-            {a.todosLabel} ({completedTodos}/{todos.length})
-          </span>
-          <ul className={styles.agentTodoList}>
-            {todos.map((item) => (
-              <li key={item.id} data-status={item.status}>
-                <span aria-hidden="true">
-                  {item.status === "completed"
-                    ? "✓"
-                    : item.status === "in_progress"
-                      ? "→"
-                      : item.status === "cancelled"
-                        ? "×"
-                        : "○"}
-                </span>{" "}
-                {item.content}
+    <BorderBeam active={running} className={styles.agentOuter}>
+      <section className={styles.agent} aria-label={a.label}>
+        {todos.length > 0 ? (
+          <div className={styles.agentTodos} aria-label={a.todosLabel}>
+            <span className={styles.agentTodosHead}>
+              {a.todosLabel} ({completedTodos}/{todos.length})
+            </span>
+            <ul className={styles.agentTodoList}>
+              {todos.map((item) => (
+                <li key={item.id} data-status={item.status}>
+                  {item.status === "completed" ? (
+                    <CheckCircle2 size={13} aria-hidden="true" />
+                  ) : item.status === "in_progress" ? (
+                    <CircleDot size={13} aria-hidden="true" />
+                  ) : item.status === "cancelled" ? (
+                    <XCircle size={13} aria-hidden="true" />
+                  ) : (
+                    <Circle size={13} aria-hidden="true" />
+                  )}
+                  <span>{item.content}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {log.length ? (
+          <ol className={styles.agentLog} aria-live="polite">
+            {log.map((e, i) => (
+              <li
+                key={i}
+                data-kind={e.kind}
+                data-error={"error" in e ? e.error : undefined}
+                data-source={e.kind === "tool" && e.runtime ? "runtime" : undefined}
+              >
+                {e.kind === "tool" ? e.label : e.text}
+                {e.kind === "end" && e.build ? (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className={styles.agentLink}
+                      disabled={running || restoring}
+                      onClick={() => {
+                        setMode("code");
+                        const b = e.build!;
+                        void run(
+                          (b.mode === "debug" ? applyFixPrompt : buildFromPlanPrompt)(
+                            b.request,
+                            b.plan,
+                          ),
+                          "code",
+                        );
+                      }}
+                    >
+                      {e.build.mode === "debug" ? a.applyFix : a.buildPlan}
+                    </button>
+                  </>
+                ) : null}
+                {e.kind === "end" && e.failed ? (
+                  <RecoveryActions
+                    code={e.failed.code}
+                    retry={() => {
+                      const r = e.failed!.retry;
+                      void run(r.text, r.mode, r.images, false);
+                    }}
+                    settings={`${localePrefix(locale)}/settings`}
+                    t={t}
+                    disabled={running || restoring}
+                    className={styles.agentLink}
+                  />
+                ) : null}
+                {e.kind === "end" && e.undo ? (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className={styles.agentLink}
+                      disabled={running || restoring}
+                      onClick={() => void restore(e.undo!.checkpointId)}
+                    >
+                      {e.undo.label}
+                    </button>
+                  </>
+                ) : null}
               </li>
             ))}
-          </ul>
-        </div>
-      ) : null}
+            {running && live ? <li data-kind="text">{live}</li> : null}
+            {running ? <li data-kind="working">{a.working}</li> : null}
+            <li ref={logEnd} aria-hidden="true" />
+          </ol>
+        ) : null}
 
-      {log.length ? (
-        <ol className={styles.agentLog} aria-live="polite">
-          {log.map((e, i) => (
-            <li
-              key={i}
-              data-kind={e.kind}
-              data-error={"error" in e ? e.error : undefined}
-              data-source={e.kind === "tool" && e.runtime ? "runtime" : undefined}
+        {approval ? (
+          <div className={styles.agentApproval} role="group" aria-labelledby={ids.approval}>
+            <p id={ids.approval}>{approvalPrompt}</p>
+            <ShimmerButton compact onClick={() => approval.decide({ allow: true })}>
+              {a.allowOnce}
+            </ShimmerButton>
+            {approval.req.tool !== "doom_loop" ? (
+              <ActionButton
+                variant="outline"
+                compact
+                onClick={() => approval.decide({ allow: true, always: true })}
+              >
+                {a.alwaysAllow}
+              </ActionButton>
+            ) : null}
+            <ActionButton
+              variant="outline"
+              compact
+              autoFocus
+              onClick={() => approval.decide(false)}
             >
-              {e.kind === "tool" ? e.label : e.text}
-              {e.kind === "end" && e.build ? (
-                <>
-                  {" "}
-                  <button
-                    type="button"
-                    className={styles.agentLink}
-                    disabled={running || restoring}
-                    onClick={() => {
-                      setMode("code");
-                      const b = e.build!;
-                      void run(
-                        (b.mode === "debug" ? applyFixPrompt : buildFromPlanPrompt)(
-                          b.request,
-                          b.plan,
-                        ),
-                        "code",
-                      );
-                    }}
-                  >
-                    {e.build.mode === "debug" ? a.applyFix : a.buildPlan}
-                  </button>
-                </>
-              ) : null}
-              {e.kind === "end" && e.failed ? (
-                <RecoveryActions
-                  code={e.failed.code}
-                  retry={() => {
-                    const r = e.failed!.retry;
-                    void run(r.text, r.mode, r.images, false);
-                  }}
-                  settings={`${localePrefix(locale)}/settings`}
-                  t={t}
-                  disabled={running || restoring}
-                  className={styles.agentLink}
-                />
-              ) : null}
-              {e.kind === "end" && e.undo ? (
-                <>
-                  {" "}
-                  <button
-                    type="button"
-                    className={styles.agentLink}
-                    disabled={running || restoring}
-                    onClick={() => void restore(e.undo!.checkpointId)}
-                  >
-                    {e.undo.label}
-                  </button>
-                </>
-              ) : null}
-            </li>
-          ))}
-          {running && live ? <li data-kind="text">{live}</li> : null}
-          {running ? <li data-kind="working">{a.working}</li> : null}
-          <li ref={logEnd} aria-hidden="true" />
-        </ol>
-      ) : null}
+              {a.deny}
+            </ActionButton>
+          </div>
+        ) : null}
 
-      {approval ? (
-        <div className={styles.agentApproval} role="group" aria-labelledby={ids.approval}>
-          <p id={ids.approval}>{approvalPrompt}</p>
-          <button
-            type="button"
-            className={styles.agentButton}
-            onClick={() => approval.decide({ allow: true })}
-          >
-            {a.allowOnce}
-          </button>
-          {approval.req.tool !== "doom_loop" ? (
-            <button
-              type="button"
-              className={styles.agentSecondary}
-              onClick={() => approval.decide({ allow: true, always: true })}
-            >
-              {a.alwaysAllow}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className={styles.agentSecondary}
-            autoFocus
-            onClick={() => approval.decide(false)}
-          >
-            {a.deny}
-          </button>
-        </div>
-      ) : null}
-
-      {pendingQuestion ? (
-        <div className={styles.agentQuestion} role="group" aria-labelledby={ids.question}>
-          <p id={ids.question}>
-            <strong>{a.questionLabel}:</strong> {pendingQuestion.req.question}
-          </p>
-          {pendingQuestion.req.options.length > 0 ? (
-            <div className={styles.agentQuestionOptions}>
-              {pendingQuestion.req.options.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  className={styles.agentMode}
-                  onClick={() => pendingQuestion.answer(opt)}
-                >
-                  {opt}
-                </button>
-              ))}
+        {pendingQuestion ? (
+          <div className={styles.agentQuestion} role="group" aria-labelledby={ids.question}>
+            <p id={ids.question}>
+              <strong>{a.questionLabel}:</strong> {pendingQuestion.req.question}
+            </p>
+            {pendingQuestion.req.options.length > 0 ? (
+              <div className={styles.agentQuestionOptions}>
+                {pendingQuestion.req.options.map((opt) => (
+                  <ActionButton
+                    key={opt}
+                    variant="outline"
+                    compact
+                    onClick={() => pendingQuestion.answer(opt)}
+                  >
+                    {opt}
+                  </ActionButton>
+                ))}
+              </div>
+            ) : null}
+            <div className={styles.agentQuestionInputRow}>
+              <input
+                type="text"
+                className={styles.agentQuestionInput}
+                value={questionDraft}
+                placeholder={a.questionPlaceholder}
+                onChange={(e) => setQuestionDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && questionDraft.trim()) {
+                    e.preventDefault();
+                    pendingQuestion.answer(questionDraft.trim());
+                  }
+                }}
+              />
+              <ShimmerButton
+                compact
+                disabled={!questionDraft.trim()}
+                onClick={() => pendingQuestion.answer(questionDraft.trim())}
+              >
+                {a.questionSubmit}
+              </ShimmerButton>
+              <ActionButton
+                variant="outline"
+                compact
+                onClick={() => pendingQuestion.answer(null)}
+              >
+                {a.questionSkip}
+              </ActionButton>
             </div>
-          ) : null}
-          <div className={styles.agentQuestionInputRow}>
-            <input
-              type="text"
-              className={styles.agentQuestionInput}
-              value={questionDraft}
-              placeholder={a.questionPlaceholder}
-              onChange={(e) => setQuestionDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && questionDraft.trim()) {
-                  e.preventDefault();
-                  pendingQuestion.answer(questionDraft.trim());
-                }
-              }}
-            />
-            <button
-              type="button"
-              className={styles.agentButton}
-              disabled={!questionDraft.trim()}
-              onClick={() => pendingQuestion.answer(questionDraft.trim())}
+          </div>
+        ) : null}
+
+        <div className={styles.agentToolbar}>
+          <div className={styles.agentModes} role="group" aria-label={a.modeLabel}>
+            {PRIMARY_MODES.map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={mode === m}
+                className={styles.agentMode}
+                disabled={running}
+                onClick={() => setMode(m)}
+              >
+                {modeIcons[m]}
+                <span>{modeLabels[m]}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className={styles.agentMetaControls}>
+            <label htmlFor={ids.preset} className={styles.srOnly}>
+              {a.permissionLabel}
+            </label>
+            <select
+              id={ids.preset}
+              className={styles.agentSelect}
+              value={preset}
+              disabled={running}
+              aria-label={a.permissionLabel}
+              onChange={(e) => setPreset(e.target.value as PermissionPreset)}
             >
-              {a.questionSubmit}
-            </button>
-            <button
-              type="button"
-              className={styles.agentSecondary}
-              onClick={() => pendingQuestion.answer(null)}
+              <option value="balanced">{a.permissionBalanced}</option>
+              <option value="manual">{a.permissionManual}</option>
+              <option value="auto">{a.permissionAuto}</option>
+            </select>
+
+            {turns.length > 0 ? (
+              <span className={styles.agentSessionStat}>
+                {turns.length}t · ~{estimatedContextTokens} tok
+              </span>
+            ) : null}
+
+            <ActionButton
+              variant="ghost"
+              compact
+              disabled={running || (!turns.length && !todos.length)}
+              onClick={compactNow}
             >
-              {a.questionSkip}
-            </button>
+              <Minimize2 size={13} aria-hidden="true" />
+              <span>{a.compactSession}</span>
+            </ActionButton>
+
+            <ActionButton
+              variant="ghost"
+              compact
+              disabled={running || (!turns.length && !log.length && !todos.length)}
+              onClick={resetSession}
+            >
+              <RotateCcw size={13} aria-hidden="true" />
+              <span>{a.newSession}</span>
+            </ActionButton>
           </div>
         </div>
-      ) : null}
 
-      <div className={styles.agentToolbar}>
-        <div className={styles.agentModes} role="group" aria-label={a.modeLabel}>
-          {PRIMARY_MODES.map((m) => (
-            <button
-              key={m}
-              type="button"
-              aria-pressed={mode === m}
-              className={styles.agentMode}
+        {mode === "custom" ? (
+          <div className={styles.agentCustomPanel}>
+            <label htmlFor={ids.customInstructions} className={styles.agentCustomLabel}>
+              {a.customInstructionsLabel}
+            </label>
+            <textarea
+              id={ids.customInstructions}
+              className={styles.agentCustomInput}
+              rows={2}
+              value={customConfig.instructions}
               disabled={running}
-              onClick={() => setMode(m)}
-            >
-              {modeLabels[m]}
-            </button>
-          ))}
-        </div>
+              onChange={(e) =>
+                setCustomConfig((prev) => ({ ...prev, instructions: e.target.value }))
+              }
+            />
+            <div className={styles.agentCustomPerms}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={customConfig.permissions.allowWrites}
+                  disabled={running}
+                  onChange={(e) =>
+                    setCustomConfig((prev) => ({
+                      ...prev,
+                      permissions: { ...prev.permissions, allowWrites: e.target.checked },
+                    }))
+                  }
+                />
+                {a.customPermWrites}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={customConfig.permissions.allowDeletes}
+                  disabled={running}
+                  onChange={(e) =>
+                    setCustomConfig((prev) => ({
+                      ...prev,
+                      permissions: { ...prev.permissions, allowDeletes: e.target.checked },
+                    }))
+                  }
+                />
+                {a.customPermDeletes}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={customConfig.permissions.allowPreview}
+                  disabled={running}
+                  onChange={(e) =>
+                    setCustomConfig((prev) => ({
+                      ...prev,
+                      permissions: { ...prev.permissions, allowPreview: e.target.checked },
+                    }))
+                  }
+                />
+                {a.customPermPreview}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={customConfig.permissions.allowSubagents}
+                  disabled={running}
+                  onChange={(e) =>
+                    setCustomConfig((prev) => ({
+                      ...prev,
+                      permissions: { ...prev.permissions, allowSubagents: e.target.checked },
+                    }))
+                  }
+                />
+                {a.customPermSubagents}
+              </label>
+            </div>
+          </div>
+        ) : null}
 
-        <div className={styles.agentMetaControls}>
-          <label htmlFor={ids.preset} className={styles.srOnly}>
-            {a.permissionLabel}
-          </label>
-          <select
-            id={ids.preset}
-            className={styles.agentSelect}
-            value={preset}
-            disabled={running}
-            aria-label={a.permissionLabel}
-            onChange={(e) => setPreset(e.target.value as PermissionPreset)}
-          >
-            <option value="balanced">{a.permissionBalanced}</option>
-            <option value="manual">{a.permissionManual}</option>
-            <option value="auto">{a.permissionAuto}</option>
-          </select>
+        <AttachmentList
+          at={at}
+          check={checkAttachments(session, at.attachments)}
+          model={session?.model}
+        />
 
-          {turns.length > 0 ? (
-            <span className={styles.agentSessionStat}>
-              {turns.length}t · ~{estimatedContextTokens} tok
-            </span>
-          ) : null}
-
-          <button
-            type="button"
-            className={styles.agentGhostButton}
-            disabled={running || (!turns.length && !todos.length)}
-            onClick={compactNow}
-          >
-            {a.compactSession}
-          </button>
-
-          <button
-            type="button"
-            className={styles.agentGhostButton}
-            disabled={running || (!turns.length && !log.length && !todos.length)}
-            onClick={resetSession}
-          >
-            {a.newSession}
-          </button>
-        </div>
-      </div>
-
-      {mode === "custom" ? (
-        <div className={styles.agentCustomPanel}>
-          <label htmlFor={ids.customInstructions} className={styles.agentCustomLabel}>
-            {a.customInstructionsLabel}
+        <form className={styles.agentForm} onSubmit={onSubmit} {...at.dropProps}>
+          <label htmlFor={ids.prompt} className={styles.srOnly}>
+            {a.label}
           </label>
           <textarea
-            id={ids.customInstructions}
-            className={styles.agentCustomInput}
+            id={ids.prompt}
+            className={styles.agentInput}
             rows={2}
-            value={customConfig.instructions}
+            value={prompt}
+            placeholder={modePlaceholders[mode]}
+            maxLength={maxPrompt}
+            aria-describedby={ids.note}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={onKeyDown}
             disabled={running}
-            onChange={(e) =>
-              setCustomConfig((prev) => ({ ...prev, instructions: e.target.value }))
-            }
           />
-          <div className={styles.agentCustomPerms}>
-            <label>
-              <input
-                type="checkbox"
-                checked={customConfig.permissions.allowWrites}
-                disabled={running}
-                onChange={(e) =>
-                  setCustomConfig((prev) => ({
-                    ...prev,
-                    permissions: { ...prev.permissions, allowWrites: e.target.checked },
-                  }))
-                }
-              />
-              {a.customPermWrites}
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={customConfig.permissions.allowDeletes}
-                disabled={running}
-                onChange={(e) =>
-                  setCustomConfig((prev) => ({
-                    ...prev,
-                    permissions: { ...prev.permissions, allowDeletes: e.target.checked },
-                  }))
-                }
-              />
-              {a.customPermDeletes}
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={customConfig.permissions.allowPreview}
-                disabled={running}
-                onChange={(e) =>
-                  setCustomConfig((prev) => ({
-                    ...prev,
-                    permissions: { ...prev.permissions, allowPreview: e.target.checked },
-                  }))
-                }
-              />
-              {a.customPermPreview}
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={customConfig.permissions.allowSubagents}
-                disabled={running}
-                onChange={(e) =>
-                  setCustomConfig((prev) => ({
-                    ...prev,
-                    permissions: { ...prev.permissions, allowSubagents: e.target.checked },
-                  }))
-                }
-              />
-              {a.customPermSubagents}
-            </label>
-          </div>
-        </div>
-      ) : null}
-
-      <AttachmentList
-        at={at}
-        check={checkAttachments(session, at.attachments)}
-        model={session?.model}
-      />
-
-      <form className={styles.agentForm} onSubmit={onSubmit} {...at.dropProps}>
-        <label htmlFor={ids.prompt} className={styles.srOnly}>
-          {a.label}
-        </label>
-        <textarea
-          id={ids.prompt}
-          className={styles.agentInput}
-          rows={2}
-          value={prompt}
-          placeholder={modePlaceholders[mode]}
-          maxLength={maxPrompt}
-          aria-describedby={ids.note}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={onKeyDown}
-          disabled={running}
-        />
-        <AttachButton at={at} disabled={running} />
-        {running ? (
-          <button
-            type="button"
-            className={styles.agentButton}
-            onClick={() => abort.current?.abort()}
-          >
-            {a.stop}
-          </button>
-        ) : (
-          <button type="submit" className={styles.agentButton} disabled={!prompt.trim()}>
-            {a.run}
-          </button>
-        )}
-      </form>
-      <p id={ids.note} className={styles.agentNote}>
-        {modeNotes[mode]}
-        {a.note.replace("{provider}", `${providers[session.provider].name} · ${session.model}`)}
-      </p>
-    </section>
+          <AttachButton at={at} disabled={running} />
+          {running ? (
+            <ShimmerButton compact onClick={() => abort.current?.abort()}>
+              <Square size={13} aria-hidden="true" />
+              <span>{a.stop}</span>
+            </ShimmerButton>
+          ) : (
+            <ShimmerButton type="submit" compact disabled={!prompt.trim()}>
+              <ArrowUp size={14} aria-hidden="true" />
+              <span>{a.run}</span>
+            </ShimmerButton>
+          )}
+        </form>
+        <p id={ids.note} className={styles.agentNote}>
+          {modeNotes[mode]}
+          {a.note.replace("{provider}", `${providers[session.provider].name} · ${session.model}`)}
+        </p>
+      </section>
+    </BorderBeam>
   );
 }

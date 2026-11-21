@@ -2,10 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { localePrefix, type Locale } from "@ladestack/i18n";
 import { workspace } from "../i18n/workspace";
 import { getProjectStore } from "../storage/client";
 import { starterTemplates, type StarterTemplate } from "../templates";
+import { ActionButton } from "./ui";
 import styles from "./Welcome.module.css";
 
 /** Creates a local project from a starter template, with no AI call (INTAKE-06). */
@@ -41,14 +43,19 @@ export function UseTemplateButton({
 
   return (
     <>
-      <button
+      <ActionButton
         type="button"
-        className={styles.secondary}
+        variant="secondary"
         onClick={create}
         disabled={state === "creating"}
       >
-        {state === "creating" ? w.creating : w.useTemplate}
-      </button>
+        <span>{state === "creating" ? w.creating : w.useTemplate}</span>
+        {state === "creating" ? (
+          <Loader2 size={14} aria-hidden="true" />
+        ) : (
+          <ArrowRight size={14} aria-hidden="true" />
+        )}
+      </ActionButton>
       {state === "error" ? (
         <p className={styles.error} role="alert">
           {w.createError}

@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { defaultLocale, isLocale, localeInfo } from "@ladestack/i18n";
 import "@ladestack/design-tokens/tokens.css";
+import "@fontsource-variable/plus-jakarta-sans";
+import "@fontsource-variable/jetbrains-mono";
 import "../globals.css";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
 

@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { ArrowRight, FolderArchive, Upload } from "lucide-react";
 import { localePrefix, type Locale } from "@ladestack/i18n";
 import { format, importZip, type ImportStrings } from "../i18n/importZip";
 import { countText } from "../i18n/plural";
 import type { RejectReason } from "../import/zip";
 import { getProjectStore } from "../storage/client";
+import { ActionButton, MagicCard } from "./ui";
+import uiStyles from "./ui/primitives.module.css";
 import styles from "./Welcome.module.css";
 
 type State =
@@ -71,44 +74,62 @@ export function ImportZip({ locale }: { locale: Locale }) {
 
   return (
     <section className={styles.templates} aria-labelledby="import-title">
-      <h2 id="import-title" className={styles.sectionTitle}>
-        {t.title}
-      </h2>
-      <p className={styles.templateDesc}>{t.desc}</p>
-      <input
-        ref={input}
-        id="import-zip"
-        type="file"
-        accept=".zip,application/zip"
-        className={styles.srOnly}
-        onChange={(e) => void onFile(e.currentTarget.files?.[0])}
-        disabled={state.kind === "busy"}
-      />
-      <button
-        type="button"
-        className={styles.secondary}
-        onClick={() => input.current?.click()}
-        disabled={state.kind === "busy"}
-      >
-        {state.kind === "busy" ? t.importing : t.choose}
-      </button>
-      {state.kind === "error" ? (
-        <p className={styles.error} role="alert">
-          {state.message}
-        </p>
-      ) : null}
-      {state.kind === "done" ? (
-        <div role="status">
-          {state.notes.map((n) => (
-            <p key={n} className={styles.templateDesc}>
-              {n}
-            </p>
-          ))}
-          <Link className={styles.secondary} href={state.href}>
-            {t.open}
-          </Link>
+      <MagicCard interactive>
+        <div className={styles.importCardInner}>
+          <div className={styles.importInfo}>
+            <div className={styles.templateIconBox} aria-hidden="true">
+              <FolderArchive size={18} />
+            </div>
+            <div className={styles.importText}>
+              <h2 id="import-title" className={styles.templateName}>
+                {t.title}
+              </h2>
+              <p className={styles.templateDesc}>{t.desc}</p>
+            </div>
+          </div>
+
+          <input
+            ref={input}
+            id="import-zip"
+            type="file"
+            accept=".zip,application/zip"
+            className={styles.srOnly}
+            onChange={(e) => void onFile(e.currentTarget.files?.[0])}
+            disabled={state.kind === "busy"}
+          />
+          <ActionButton
+            type="button"
+            variant="secondary"
+            onClick={() => input.current?.click()}
+            disabled={state.kind === "busy"}
+          >
+            <Upload size={14} aria-hidden="true" />
+            <span>{state.kind === "busy" ? t.importing : t.choose}</span>
+          </ActionButton>
         </div>
-      ) : null}
+
+        {state.kind === "error" ? (
+          <div style={{ padding: "0 24px 20px" }}>
+            <p className={styles.error} role="alert">
+              {state.message}
+            </p>
+          </div>
+        ) : null}
+
+        {state.kind === "done" ? (
+          <div className={styles.importDone} style={{ padding: "14px 24px 22px" }} role="status">
+            {state.notes.map((n) => (
+              <p key={n} className={styles.templateDesc}>
+                {n}
+              </p>
+            ))}
+            <Link className={uiStyles.actionBtn} href={state.href}>
+              <span>{t.open}</span>
+              <ArrowRight size={14} aria-hidden="true" />
+            </Link>
+          </div>
+        ) : null}
+      </MagicCard>
     </section>
   );
 }

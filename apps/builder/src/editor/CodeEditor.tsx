@@ -38,6 +38,25 @@ export function CodeEditor({
 
   const onMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
+    monaco.editor.defineTheme("ladestack-obsidian", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [],
+      colors: {
+        "editor.background": "#0c0c10",
+        "editor.foreground": "#ececf1",
+        "editor.lineHighlightBackground": "#16161e",
+        "editor.selectionBackground": "#f54e0038",
+        "editor.inactiveSelectionBackground": "#f54e001f",
+        "editorLineNumber.foreground": "#525260",
+        "editorLineNumber.activeForeground": "#c8c8d4",
+        "editorCursor.foreground": "#ff621a",
+        "editorIndentGuide.background1": "#1f1f29",
+        "editorIndentGuide.activeBackground1": "#363646",
+        "editorGutter.background": "#0c0c10",
+      },
+    });
+    monaco.editor.setTheme("ladestack-obsidian");
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => save.current());
     // Generated projects are type-checked by their own toolchain; keep the editor quiet but useful.
     monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
@@ -62,8 +81,8 @@ export function CodeEditor({
       onChange={(v) => onChange(v ?? "")}
       onMount={onMount}
       options={{
-        fontFamily: '"JetBrains Mono", ui-monospace, Menlo, monospace',
-        fontSize: 14,
+        fontFamily: 'var(--font-mono), "JetBrains Mono", ui-monospace, Menlo, monospace',
+        fontSize: 13.5,
         lineHeight: 22,
         tabSize: 2,
         minimap: { enabled: false },
@@ -71,7 +90,7 @@ export function CodeEditor({
         automaticLayout: true,
         wordWrap: "off",
         renderWhitespace: "selection",
-        padding: { top: 12, bottom: 64 },
+        padding: { top: 14, bottom: 72 },
         readOnly,
         domReadOnly: readOnly,
       }}

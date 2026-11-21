@@ -1,0 +1,419 @@
+/* Shared UI component primitives inspired by Magic UI (magicui.design) and 21st.dev */
+
+/* 1. Magic UI — DotPattern */
+.dotPattern {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  color: rgba(255, 255, 255, 0.16);
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 0%, #000 20%, transparent 82%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 0%, #000 20%, transparent 82%);
+  z-index: 0;
+}
+
+/* 2. Magic UI — MagicCard (interactive pointer spotlight card) */
+.magicCard {
+  --spotlight-x: 50%;
+  --spotlight-y: 0%;
+  --spotlight-opacity: 0;
+  position: relative;
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  overflow: hidden;
+  transition:
+    border-color 180ms var(--ui-ease),
+    transform 180ms var(--ui-ease),
+    background-color 180ms var(--ui-ease);
+}
+
+.magicCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--spotlight-opacity);
+  background: radial-gradient(
+    360px circle at var(--spotlight-x) var(--spotlight-y),
+    rgba(245, 78, 0, 0.11),
+    rgba(255, 255, 255, 0.03) 40%,
+    transparent 72%
+  );
+  transition: opacity 220ms var(--ui-ease);
+  z-index: 0;
+}
+
+.magicCard:hover {
+  border-color: var(--ui-border-strong);
+}
+
+.magicCardInteractive:hover {
+  border-color: rgba(245, 78, 0, 0.34);
+  background: var(--ui-surface-elevated);
+}
+
+.magicCardContent {
+  position: relative;
+  z-index: 1;
+}
+
+/* 3. Magic UI — BorderBeam (conic luminous border sweep) */
+.borderBeamWrap {
+  position: relative;
+  border-radius: var(--ui-radius-xl);
+  padding: 1px;
+  background: var(--ui-border);
+  overflow: hidden;
+  transition:
+    box-shadow 200ms var(--ui-ease),
+    background-color 200ms var(--ui-ease);
+}
+
+.borderBeamWrap:focus-within {
+  box-shadow: 0 0 0 1px rgba(245, 78, 0, 0.32), 0 16px 48px -18px rgba(245, 78, 0, 0.25);
+}
+
+.borderBeamTrack {
+  position: absolute;
+  inset: -120%;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 265deg,
+    rgba(245, 78, 0, 0.55) 305deg,
+    #ff9860 330deg,
+    rgba(255, 255, 255, 0.45) 345deg,
+    transparent 360deg
+  );
+  opacity: 0.45;
+  animation: magic-beam-rotate 9s linear infinite;
+  transition: opacity 220ms var(--ui-ease);
+}
+
+.borderBeamWrap:focus-within .borderBeamTrack,
+.borderBeamActive .borderBeamTrack {
+  opacity: 0.92;
+  animation-duration: 5.5s;
+}
+
+.borderBeamInner {
+  position: relative;
+  z-index: 1;
+  border-radius: calc(var(--ui-radius-xl) - 1px);
+  background: var(--ui-surface);
+}
+
+/* 4. Magic UI — ShimmerButton (primary CTA with subtle specular sweep) */
+.shimmerBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 160, 110, 0.35);
+  border-radius: var(--ui-radius-md);
+  background: linear-gradient(180deg, #ff5d14 0%, #e54700 100%);
+  color: #ffffff;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 2px 10px -2px rgba(245, 78, 0, 0.45);
+  transition:
+    transform 140ms var(--ui-ease),
+    box-shadow 180ms var(--ui-ease),
+    filter 140ms var(--ui-ease),
+    opacity 140ms var(--ui-ease);
+}
+
+.shimmerBtn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 44%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.26) 50%,
+    transparent 100%
+  );
+  transform: translateX(-140%) skewX(-18deg);
+  pointer-events: none;
+}
+
+.shimmerBtn:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 6px 20px -4px rgba(245, 78, 0, 0.58);
+}
+
+.shimmerBtn:hover:not(:disabled)::after {
+  animation: magic-shimmer-slide 780ms var(--ui-ease) 1;
+}
+
+.shimmerBtn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.shimmerBtn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.shimmerBtn:focus-visible {
+  outline: 2px solid var(--ui-accent-hover);
+  outline-offset: 2px;
+}
+
+.shimmerBtnCompact {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+/* 5. 21st.dev — ActionButton (secondary / outline / ghost / danger) */
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: var(--ui-radius-md);
+  border: 1px solid var(--ui-border-strong);
+  background: var(--ui-surface-elevated);
+  color: var(--ui-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--ui-ease),
+    border-color 140ms var(--ui-ease),
+    color 140ms var(--ui-ease),
+    transform 140ms var(--ui-ease);
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--ui-surface-hover);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.actionBtn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.actionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.actionBtn:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.actionBtnGhost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ui-text-secondary);
+}
+
+.actionBtnGhost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--ui-border);
+  color: var(--ui-text);
+}
+
+.actionBtnOutline {
+  background: transparent;
+  border-color: var(--ui-border-strong);
+  color: var(--ui-text);
+}
+
+.actionBtnOutline:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.actionBtnDanger {
+  background: var(--ui-danger-soft);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.actionBtnDanger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #fecaca;
+}
+
+.actionBtnCompact {
+  min-height: 32px;
+  padding: 0 11px;
+  font-size: 12.5px;
+  border-radius: var(--ui-radius-sm);
+}
+
+/* 6. 21st.dev — SegmentedControl */
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
+  border: 1px solid var(--ui-border);
+}
+
+.segmentedItem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-xs);
+  background: transparent;
+  color: var(--ui-text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--ui-ease),
+    color 140ms var(--ui-ease),
+    border-color 140ms var(--ui-ease),
+    box-shadow 140ms var(--ui-ease);
+}
+
+.segmentedItem:hover:not(:disabled) {
+  color: var(--ui-text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.segmentedItem[aria-pressed="true"] {
+  background: var(--ui-surface-active);
+  color: var(--ui-text);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.segmentedItem:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.segmentedItem:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+
+/* 7. Magic UI — BlurFade */
+.blurFade {
+  animation: magic-blur-fade-in 380ms var(--ui-ease) both;
+}
+
+/* 8. Magic UI — Safari / BrowserFrame */
+.browserFrame {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border-radius: var(--ui-radius-lg);
+  border: 1px solid var(--ui-border-strong);
+  background: var(--ui-surface);
+  overflow: hidden;
+  box-shadow: var(--ui-shadow-md);
+}
+
+.browserChrome {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 14px;
+  background: var(--ui-surface-elevated);
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.browserLights {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.browserLights span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.browserLights span:nth-child(1) {
+  background: rgba(239, 68, 68, 0.72);
+}
+
+.browserLights span:nth-child(2) {
+  background: rgba(245, 158, 11, 0.72);
+}
+
+.browserLights span:nth-child(3) {
+  background: rgba(16, 185, 129, 0.72);
+}
+
+.browserAddress {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: var(--ui-radius-xs);
+  background: var(--ui-bg-subtle);
+  border: 1px solid var(--ui-border);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ui-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browserBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  background: #0c0c0f;
+}
+
+/* 9. Magic UI — NumberTicker */
+.ticker {
+  font-variant-numeric: tabular-nums;
+}

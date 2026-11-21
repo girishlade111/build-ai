@@ -2,12 +2,25 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import {
+  Activity,
+  BarChart3,
+  Code2,
+  Download,
+  FileCode2,
+  FileJson,
+  FileText,
+  Folder,
+  Globe,
+  Settings,
+} from "lucide-react";
 import { AgentPanel } from "./AgentPanel";
 import { CheckpointHistory } from "./CheckpointHistory";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Preview } from "./Preview";
 import { ProjectDashboard } from "./ProjectDashboard";
 import { ProjectOverview } from "./ProjectOverview";
+import { ActionButton, SegmentedControl } from "./ui";
 import { PreviewController } from "../preview/controller";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
@@ -53,6 +66,22 @@ interface OpenFile {
 }
 
 const autosaveDelayMs = 800;
+
+function FileIcon({ path }: { path: string }) {
+  const lower = path.toLowerCase();
+  if (lower.endsWith(".json")) return <FileJson size={14} className={styles.fileIcon} aria-hidden="true" />;
+  if (
+    lower.endsWith(".ts") ||
+    lower.endsWith(".tsx") ||
+    lower.endsWith(".js") ||
+    lower.endsWith(".jsx") ||
+    lower.endsWith(".html") ||
+    lower.endsWith(".css")
+  ) {
+    return <FileCode2 size={14} className={styles.fileIcon} aria-hidden="true" />;
+  }
+  return <FileText size={14} className={styles.fileIcon} aria-hidden="true" />;
+}
 
 /** Screen B (PRD A.13): full-screen Code or Preview over the local project store. */
 export function Workspace({ locale }: { locale: Locale }) {
@@ -419,82 +448,90 @@ export function Workspace({ locale }: { locale: Locale }) {
     conflict: w.conflict,
   };
 
+  const viewItems: ReadonlyArray<{ value: WorkspaceView; label: string; icon: React.ReactNode }> = [
+    { value: "code", label: w.code, icon: <Code2 size={14} aria-hidden="true" /> },
+    { value: "preview", label: w.preview, icon: <Globe size={14} aria-hidden="true" /> },
+    { value: "overview", label: w.overview, icon: <Activity size={14} aria-hidden="true" /> },
+    { value: "dashboard", label: w.dashboard, icon: <BarChart3 size={14} aria-hidden="true" /> },
+  ];
+
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
-        <Link className={styles.home} href={home} aria-label={w.back}>
-          LadeStack <span>Build</span>
-        </Link>
-        <h1 className={styles.projectName}>{load.project.name}</h1>
-        <div className={styles.views} role="group" aria-label={w.viewLabel}>
-          {(["code", "preview", "overview", "dashboard"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              aria-pressed={view === v}
-              className={styles.viewButton}
-              onClick={() => setView(v)}
-            >
-              {v === "code"
-                ? w.code
-                : v === "preview"
-                  ? w.preview
-                  : v === "overview"
-                    ? w.overview
-                    : w.dashboard}
-            </button>
-          ))}
+        <div className={styles.headerLeft}>
+          <Link className={styles.home} href={home} aria-label={w.back}>
+            LadeStack <span>Build</span>
+          </Link>
+          <span className={styles.crumbSep} aria-hidden="true">
+            /
+          </span>
+          <h1 className={styles.projectName}>{load.project.name}</h1>
         </div>
-        <button
-          type="button"
-          className={styles.exportButton}
-          onClick={() => void exportZip()}
-          disabled={exporting === "busy"}
-        >
-          {exporting === "busy" ? w.exporting : w.exportZip}
-        </button>
-        <CheckpointHistory
-          locale={locale}
-          projectId={id!}
-          busy={agentBusy}
-          refreshKey={historyKey}
-          onRestored={() => void restored()}
-        />
-        <Link className={styles.settingsLink} href={`${localePrefix(locale)}/settings`}>
-          {settingsStrings[locale].link}
-        </Link>
-        <p
-          className={styles.saveState}
-          role="status"
-          aria-live="polite"
-          data-state={save}
-          data-testid="workspace-autosave"
-          title={
-            lastAutoSavedAt
-              ? `${w.autoSaveTooltip} (${formatSavedDateTime(lastAutoSavedAt, locale)})`
-              : w.autoSaveTooltip
-          }
-        >
-          {save === "conflict" || save === "error" ? null : (
-            <>
-              <span>{status[save]}</span>
-              <span className={styles.saveSep} aria-hidden="true">
-                ·
-              </span>
-              {lastAutoSavedAt ? (
-                <span className={styles.autoSaveText}>
-                  {w.autoSavedLabel}{" "}
-                  <time className={styles.autoSaveTime} dateTime={lastAutoSavedAt}>
-                    {formatSavedClock(lastAutoSavedAt, locale)}
-                  </time>
+
+        <div className={styles.headerCenter}>
+          <SegmentedControl
+            items={viewItems}
+            value={view}
+            onChange={setView}
+            ariaLabel={w.viewLabel}
+          />
+        </div>
+
+        <div className={styles.headerRight}>
+          <ActionButton
+            variant="outline"
+            compact
+            onClick={() => void exportZip()}
+            disabled={exporting === "busy"}
+          >
+            <Download size={13} aria-hidden="true" />
+            <span>{exporting === "busy" ? w.exporting : w.exportZip}</span>
+          </ActionButton>
+          <CheckpointHistory
+            locale={locale}
+            projectId={id!}
+            busy={agentBusy}
+            refreshKey={historyKey}
+            onRestored={() => void restored()}
+          />
+          <Link className={styles.settingsLink} href={`${localePrefix(locale)}/settings`}>
+            <Settings size={14} aria-hidden="true" />
+            <span>{settingsStrings[locale].link}</span>
+          </Link>
+          <p
+            className={styles.saveState}
+            role="status"
+            aria-live="polite"
+            data-state={save}
+            data-testid="workspace-autosave"
+            title={
+              lastAutoSavedAt
+                ? `${w.autoSaveTooltip} (${formatSavedDateTime(lastAutoSavedAt, locale)})`
+                : w.autoSaveTooltip
+            }
+          >
+            {save === "conflict" || save === "error" ? null : (
+              <>
+                <span>{status[save]}</span>
+                <span className={styles.saveSep} aria-hidden="true">
+                  ·
                 </span>
-              ) : (
-                <span className={styles.autoSaveText}>{w.autoSavePending}</span>
-              )}
-            </>
-          )}
-        </p>
+                {lastAutoSavedAt ? (
+                  <span className={styles.autoSaveText}>
+                    {w.autoSavedLabel}{" "}
+                    <time className={styles.autoSaveTime} dateTime={lastAutoSavedAt}>
+                      {formatSavedClock(lastAutoSavedAt, locale)}
+                    </time>
+                  </span>
+                ) : (
+                  <span className={styles.autoSaveText}>{w.autoSavePending}</span>
+                )}
+              </>
+            )}
+          </p>
+        </div>
       </header>
+
       {exporting === "error" ? (
         <p className={styles.alert} role="alert">
           {w.exportError}
@@ -520,6 +557,7 @@ export function Workspace({ locale }: { locale: Locale }) {
           ) : null}
         </div>
       ) : null}
+
       {view === "code" ? (
         <ErrorBoundary
           locale={locale}
@@ -529,28 +567,33 @@ export function Workspace({ locale }: { locale: Locale }) {
         >
           <div className={styles.code}>
             <nav className={styles.explorer} aria-label={w.files}>
-              <p className={styles.explorerTitle}>{w.files}</p>
+              <div className={styles.explorerHead}>
+                <p className={styles.explorerTitle}>{w.files}</p>
+                <span className={styles.explorerCount}>{files.length}</span>
+              </div>
               <label className={styles.follow}>
                 <input
                   type="checkbox"
                   checked={follow}
                   onChange={(e) => setFollow(e.target.checked)}
                 />
-                {w.followEdits}
+                <span>{w.followEdits}</span>
               </label>
               <Tree
                 nodes={buildFileTree(files.map((f) => f.path))}
                 active={open?.path}
                 onSelect={select}
+                nested={false}
               />
             </nav>
+
             <section className={styles.editorPane}>
               {draft && follow && save !== "dirty" ? (
                 <>
                   <p className={styles.breadcrumb}>
-                    {draft.path}
+                    <FileIcon path={draft.path} />
+                    <span>{draft.path}</span>
                     <span className={styles.writing} role="status">
-                      {" "}
                       · {w.agentWriting}
                     </span>
                   </p>
@@ -568,8 +611,9 @@ export function Workspace({ locale }: { locale: Locale }) {
               ) : open ? (
                 <>
                   <p className={styles.breadcrumb}>
-                    {open.path}
-                    {save === "dirty" ? <span aria-hidden="true"> ●</span> : null}
+                    <FileIcon path={open.path} />
+                    <span>{open.path}</span>
+                    {save === "dirty" ? <span className={styles.dirtyDot} aria-hidden="true" /> : null}
                   </p>
                   <div className={styles.editor}>
                     <CodeEditor
@@ -588,6 +632,7 @@ export function Workspace({ locale }: { locale: Locale }) {
           </div>
         </ErrorBoundary>
       ) : null}
+
       {view === "overview" ? (
         <ErrorBoundary
           locale={locale}
@@ -615,6 +660,7 @@ export function Workspace({ locale }: { locale: Locale }) {
           />
         </ErrorBoundary>
       ) : null}
+
       {view === "dashboard" ? (
         <ErrorBoundary
           locale={locale}
@@ -639,6 +685,7 @@ export function Workspace({ locale }: { locale: Locale }) {
           />
         </ErrorBoundary>
       ) : null}
+
       {/* Kept mounted while editing so the agent's check_preview can reload it. */}
       <div className={view === "preview" ? styles.previewWrap : styles.hiddenPane}>
         <ErrorBoundary
@@ -659,6 +706,7 @@ export function Workspace({ locale }: { locale: Locale }) {
           />
         </ErrorBoundary>
       </div>
+
       <ErrorBoundary locale={locale} scope="agent" variant="workspace" compact resetKeys={[id]}>
         <AgentPanel
           locale={locale}
@@ -685,19 +733,24 @@ function Tree({
   nodes,
   active,
   onSelect,
+  nested,
 }: {
   nodes: TreeNode[];
   active: string | undefined;
   onSelect: (path: string) => void;
+  nested: boolean;
 }) {
   return (
-    <ul className={styles.tree}>
+    <ul className={nested ? `${styles.tree} ${styles.treeNested}` : styles.tree}>
       {nodes.map((n) =>
         n.children ? (
           <li key={n.path}>
             <details open>
-              <summary className={styles.folder}>{n.name}</summary>
-              <Tree nodes={n.children} active={active} onSelect={onSelect} />
+              <summary className={styles.folder}>
+                <Folder size={14} className={styles.fileIcon} aria-hidden="true" />
+                <span>{n.name}</span>
+              </summary>
+              <Tree nodes={n.children} active={active} onSelect={onSelect} nested />
             </details>
           </li>
         ) : (
@@ -708,7 +761,8 @@ function Tree({
               aria-current={n.path === active ? "true" : undefined}
               onClick={() => onSelect(n.path)}
             >
-              {n.name}
+              <FileIcon path={n.path} />
+              <span className={styles.fileName}>{n.name}</span>
             </button>
           </li>
         ),

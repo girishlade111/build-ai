@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Component, useState, type ErrorInfo, type ReactNode } from "react";
+import { AlertTriangle, Check, Copy, RotateCcw } from "lucide-react";
 import { localePrefix, type Locale } from "@ladestack/i18n";
 import {
   formatErrorCopyText,
@@ -10,6 +11,7 @@ import {
   type UiErrorReport,
 } from "../errors/formatError";
 import { errorBoundaryStrings, type ErrorBoundaryScope } from "../i18n/errorBoundary";
+import { ActionButton, ShimmerButton } from "./ui";
 import styles from "./ErrorBoundary.module.css";
 
 export interface ErrorBoundaryProps {
@@ -74,9 +76,10 @@ export function ErrorFallback({
           </p>
           <p className={styles.compactMessage}>{s.compactBody}</p>
         </div>
-        <button type="button" className={styles.primaryBtn} onClick={onRetry}>
-          {s.retry}
-        </button>
+        <ShimmerButton compact onClick={onRetry}>
+          <RotateCcw size={13} aria-hidden="true" />
+          <span>{s.retry}</span>
+        </ShimmerButton>
       </section>
     );
   }
@@ -92,24 +95,26 @@ export function ErrorFallback({
       data-testid={`error-boundary-${scope}`}
     >
       <div className={styles.card}>
-        <p className={styles.meta}>
-          <span>{scopeLabel}</span>
-          <span aria-hidden="true">·</span>
-          <span className={styles.errorCode}>{report.name}</span>
-        </p>
+        <div className={styles.headRow}>
+          <div className={styles.iconBox} aria-hidden="true">
+            <AlertTriangle size={17} />
+          </div>
+          <p className={styles.meta}>
+            <span>{scopeLabel}</span>
+            <span aria-hidden="true">·</span>
+            <span className={styles.errorCode}>{report.name}</span>
+          </p>
+        </div>
         <h2 className={styles.heading}>{s.heading}</h2>
         <p className={styles.body}>{s.body}</p>
         <div className={styles.actions}>
-          <button type="button" className={styles.primaryBtn} onClick={onRetry}>
-            {s.retry}
-          </button>
-          <button
-            type="button"
-            className={styles.secondaryBtn}
-            onClick={() => window.location.reload()}
-          >
+          <ShimmerButton onClick={onRetry}>
+            <RotateCcw size={14} aria-hidden="true" />
+            <span>{s.retry}</span>
+          </ShimmerButton>
+          <ActionButton variant="outline" onClick={() => window.location.reload()}>
             {s.reload}
-          </button>
+          </ActionButton>
           {scope === "app" || scope === "workspace" ? (
             <Link className={styles.homeLink} href={home}>
               {s.backHome}
@@ -121,13 +126,10 @@ export function ErrorFallback({
           <div className={styles.detailsBody}>
             <pre className={styles.stackPre}>{diagnosticText}</pre>
             <div className={styles.detailsFooter}>
-              <button
-                type="button"
-                className={styles.copyBtn}
-                onClick={() => void copyDetails()}
-              >
-                {copied ? s.copied : s.copyDetails}
-              </button>
+              <ActionButton variant="outline" compact onClick={() => void copyDetails()}>
+                {copied ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
+                <span>{copied ? s.copied : s.copyDetails}</span>
+              </ActionButton>
             </div>
           </div>
         </details>

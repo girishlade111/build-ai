@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Loader2, Trash2 } from "lucide-react";
 import type { Locale } from "@ladestack/i18n";
 import { erase } from "../i18n/erase";
 import { browserClearDeps, clearPreviewCache } from "../preview/clear";
@@ -8,6 +9,7 @@ import { previewOrigin } from "../preview/origin";
 import { setSession } from "../providers/session";
 import { closeProjectStore } from "../storage/client";
 import { eraseLocalData } from "../storage/erase";
+import { ActionButton, MagicCard } from "./ui";
 import styles from "./Welcome.module.css";
 
 type State = "idle" | "busy" | "blocked" | "done" | "partial" | "failed";
@@ -66,35 +68,48 @@ export function EraseData({ locale, title }: { locale: Locale; title?: string })
   }
 
   const working = state === "busy" || state === "blocked";
+  const statusText =
+    state === "blocked"
+      ? t.blocked
+      : state === "done"
+        ? t.done
+        : state === "partial"
+          ? t.previewNotCleared
+          : state === "failed"
+            ? t.failed
+            : "";
+
   return (
-    <section className={styles.templates} aria-labelledby="erase-title">
-      <h2 id="erase-title" className={styles.sectionTitle}>
-        {title ?? t.title}
-      </h2>
-      <p className={styles.templateDesc}>{t.body}</p>
-      <button
-        type="button"
-        className={styles.secondary}
-        onClick={() => void run()}
-        disabled={working}
-        aria-busy={working}
-      >
-        {working ? t.busy : t.button}
-      </button>
-      <p
-        role="status"
-        className={state === "failed" || state === "partial" ? styles.error : styles.templateDesc}
-      >
-        {state === "blocked"
-          ? t.blocked
-          : state === "done"
-            ? t.done
-            : state === "partial"
-              ? t.previewNotCleared
-              : state === "failed"
-                ? t.failed
-                : ""}
-      </p>
-    </section>
+    <MagicCard as="section" aria-labelledby="erase-title">
+      <div className={styles.settingsCardInner}>
+        <div className={styles.settingsCardHead}>
+          <div className={styles.templateIconBox} aria-hidden="true" style={{ color: "#fca5a5" }}>
+            <Trash2 size={17} />
+          </div>
+          <h2 id="erase-title" className={styles.sectionTitle}>
+            {title ?? t.title}
+          </h2>
+        </div>
+        <p className={styles.templateDesc}>{t.body}</p>
+        <ActionButton
+          type="button"
+          variant="danger"
+          onClick={() => void run()}
+          disabled={working}
+          aria-busy={working}
+        >
+          {working ? <Loader2 size={14} aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}
+          <span>{working ? t.busy : t.button}</span>
+        </ActionButton>
+        {statusText ? (
+          <p
+            role="status"
+            className={state === "failed" || state === "partial" ? styles.error : styles.templateDesc}
+          >
+            {statusText}
+          </p>
+        ) : null}
+      </div>
+    </MagicCard>
   );
 }

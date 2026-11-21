@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { BookmarkPlus } from "lucide-react";
 import {
   Area,
   Bar,
@@ -32,6 +33,7 @@ import {
   type DepthDistributionBucket,
 } from "../workspace/overviewMetrics";
 import styles from "./ProjectOverview.module.css";
+import { MagicCard, NumberTicker, SegmentedControl, ShimmerButton } from "./ui";
 
 export interface ProjectOverviewProps {
   locale: Locale;
@@ -50,8 +52,8 @@ type ActivityFilter = "all" | "manual" | "ai";
 type DepthViewMode = "modules" | "distribution";
 
 const AI_COLOR = "#f54e00";
-const MANUAL_COLOR = "#9fbbe0";
-const CUMULATIVE_COLOR = "#dfa88f";
+const MANUAL_COLOR = "#60a5fa";
+const CUMULATIVE_COLOR = "#f59e0b";
 
 export function ProjectOverview({
   locale,
@@ -229,575 +231,577 @@ export function ProjectOverview({
           </div>
 
           <div className={styles.controls}>
-            <div className={styles.segmented} role="group" aria-label={s.filterLabel}>
-              {(
-                [
-                  ["all", s.filterAll],
-                  ["manual", s.filterManual],
-                  ["ai", s.filterAi],
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  className={styles.segmentBtn}
-                  aria-pressed={activityFilter === key}
-                  onClick={() => setActivityFilter(key)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              className={styles.primaryAction}
+            <SegmentedControl
+              ariaLabel={s.filterLabel}
+              value={activityFilter}
+              onChange={setActivityFilter}
+              items={[
+                { value: "all", label: s.filterAll },
+                { value: "manual", label: s.filterManual },
+                { value: "ai", label: s.filterAi },
+              ]}
+            />
+            <ShimmerButton
+              compact
               disabled={savingSnapshot}
               onClick={() => void handleSaveSnapshot()}
             >
-              {savingSnapshot ? s.savingSnapshot : s.saveSnapshot}
-            </button>
+              <BookmarkPlus size={14} aria-hidden="true" />
+              <span>{savingSnapshot ? s.savingSnapshot : s.saveSnapshot}</span>
+            </ShimmerButton>
           </div>
         </div>
 
-        <div className={styles.kpiStrip} data-testid="overview-kpis">
-          <div className={styles.kpiCell}>
-            <p className={styles.kpiLabel}>{s.kpiChanges}</p>
-            <p className={styles.kpiValue}>{metrics.summary.filesModifiedTotal}</p>
-            <p className={styles.kpiSub}>
-              {metrics.summary.totalChangeEvents} {s.kpiChangesSub}
-            </p>
-          </div>
-          <div className={styles.kpiCell}>
-            <p className={styles.kpiLabel}>{s.kpiDepth}</p>
-            <p className={styles.kpiValue}>
-              {metrics.summary.maxDependencyDepth} {s.kpiDepthLevels}
-            </p>
-            <p className={styles.kpiSub}>
-              {metrics.summary.localEdges} {s.kpiDepthLinks} · {metrics.summary.externalPackages}{" "}
-              npm
-            </p>
-          </div>
-          <div className={styles.kpiCell}>
-            <p className={styles.kpiLabel}>{s.kpiAuthorship}</p>
-            <p className={styles.kpiValue}>
-              {metrics.summary.aiPct}% / {metrics.summary.manualPct}%
-            </p>
-            <p className={styles.kpiSub}>
-              {metrics.summary.aiLines.toLocaleString()} /{" "}
-              {metrics.summary.manualLines.toLocaleString()} {s.linesUnit}
-            </p>
-          </div>
-          <div className={styles.kpiCell} title={savedTitle || undefined}>
-            <p className={styles.kpiLabel}>{s.kpiAutoSave}</p>
-            <p className={styles.kpiValue} data-testid="overview-autosave-time">
-              {savedClock || s.kpiAutoSaveWaiting}
-            </p>
-            <p className={styles.kpiSub}>{s.kpiAutoSaveSub}</p>
-          </div>
-        </div>
-
-        <article className={styles.panel} data-testid="chart-files-changed">
-          <div className={styles.panelHead}>
-            <div>
-              <h3 className={styles.panelTitle}>{s.timelineTitle}</h3>
-              <p className={styles.panelHint}>{s.timelineHint}</p>
+        <MagicCard className={styles.kpiCard}>
+          <div className={styles.kpiStrip} data-testid="overview-kpis">
+            <div className={styles.kpiCell}>
+              <p className={styles.kpiLabel}>{s.kpiChanges}</p>
+              <p className={styles.kpiValue}>
+                <NumberTicker value={metrics.summary.filesModifiedTotal} />
+              </p>
+              <p className={styles.kpiSub}>
+                {metrics.summary.totalChangeEvents} {s.kpiChangesSub}
+              </p>
             </div>
-            <div className={styles.seriesLegend}>
-              {activityFilter !== "ai" ? (
-                <span className={styles.seriesLegendItem}>
-                  <span
-                    className={styles.swatch}
-                    style={{ background: MANUAL_COLOR }}
-                    aria-hidden="true"
-                  />
-                  {s.seriesManual}
-                </span>
-              ) : null}
-              {activityFilter !== "manual" ? (
-                <span className={styles.seriesLegendItem}>
-                  <span
-                    className={styles.swatch}
-                    style={{ background: AI_COLOR }}
-                    aria-hidden="true"
-                  />
-                  {s.seriesAi}
-                </span>
-              ) : null}
-              <span className={styles.seriesLegendItem}>
-                <span
-                  className={styles.swatch}
-                  style={{ background: CUMULATIVE_COLOR }}
-                  aria-hidden="true"
+            <div className={styles.kpiCell}>
+              <p className={styles.kpiLabel}>{s.kpiDepth}</p>
+              <p className={styles.kpiValue}>
+                <NumberTicker
+                  value={metrics.summary.maxDependencyDepth}
+                  suffix={` ${s.kpiDepthLevels}`}
                 />
-                {s.seriesCumulative}
-              </span>
+              </p>
+              <p className={styles.kpiSub}>
+                {metrics.summary.localEdges} {s.kpiDepthLinks} · {metrics.summary.externalPackages}{" "}
+                npm
+              </p>
+            </div>
+            <div className={styles.kpiCell}>
+              <p className={styles.kpiLabel}>{s.kpiAuthorship}</p>
+              <p className={styles.kpiValue}>
+                <NumberTicker value={metrics.summary.aiPct} suffix="%" /> /{" "}
+                <NumberTicker value={metrics.summary.manualPct} suffix="%" />
+              </p>
+              <p className={styles.kpiSub}>
+                {metrics.summary.aiLines.toLocaleString()} /{" "}
+                {metrics.summary.manualLines.toLocaleString()} {s.linesUnit}
+              </p>
+            </div>
+            <div className={styles.kpiCell} title={savedTitle || undefined}>
+              <p className={styles.kpiLabel}>{s.kpiAutoSave}</p>
+              <p className={styles.kpiValue} data-testid="overview-autosave-time">
+                {savedClock || s.kpiAutoSaveWaiting}
+              </p>
+              <p className={styles.kpiSub}>{s.kpiAutoSaveSub}</p>
             </div>
           </div>
-          <div className={styles.timelineChartBox}>
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                data={metrics.filesChangedTimeline}
-                margin={{ top: 10, right: 16, bottom: 4, left: 0 }}
-              >
-                <CartesianGrid stroke="#2f2d26" vertical={false} />
-                <XAxis
-                  dataKey="shortLabel"
-                  stroke="#807d72"
-                  tick={{ fill: "#a7a396", fontSize: 12 }}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  stroke="#807d72"
-                  tick={{ fill: "#a7a396", fontSize: 12 }}
-                />
-                <Tooltip
-                  cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
-                  content={({ active, payload }) => {
-                    const raw = payload?.[0]?.payload;
-                    if (!active || !raw) return null;
-                    const pt = raw as ChangeTimelinePoint;
-                    return (
-                      <div className={styles.tooltip}>
-                        <p className={styles.tooltipTitle}>{pt.label}</p>
-                        <p className={styles.tooltipRow}>
-                          <span>{s.seriesTotalChanged}</span>
-                          <span className={styles.tooltipNum}>{pt.filesChanged}</span>
-                        </p>
-                        <p className={styles.tooltipRow}>
-                          <span>{s.seriesManual}</span>
-                          <span className={styles.tooltipNum}>{pt.manualChanged}</span>
-                        </p>
-                        <p className={styles.tooltipRow}>
-                          <span>{s.seriesAi}</span>
-                          <span className={styles.tooltipNum}>{pt.aiChanged}</span>
-                        </p>
-                        <p className={styles.tooltipRow}>
-                          <span>{s.seriesCumulative}</span>
-                          <span className={styles.tooltipNum}>{pt.cumulativeChanges}</span>
-                        </p>
-                      </div>
-                    );
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="cumulativeChanges"
-                  name={s.seriesCumulative}
-                  stroke={CUMULATIVE_COLOR}
-                  fill={CUMULATIVE_COLOR}
-                  fillOpacity={0.14}
-                  strokeWidth={2}
-                  isAnimationActive={false}
-                />
-                {activityFilter !== "ai" ? (
-                  <Bar
-                    dataKey="manualChanged"
-                    name={s.seriesManual}
-                    stackId="changes"
-                    fill={MANUAL_COLOR}
-                    radius={[3, 3, 0, 0]}
-                    barSize={22}
-                    isAnimationActive={false}
-                  />
-                ) : null}
-                {activityFilter !== "manual" ? (
-                  <Bar
-                    dataKey="aiChanged"
-                    name={s.seriesAi}
-                    stackId="changes"
-                    fill={AI_COLOR}
-                    radius={[3, 3, 0, 0]}
-                    barSize={22}
-                    isAnimationActive={false}
-                  />
-                ) : null}
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
+        </MagicCard>
 
-        <div className={styles.twoColGrid}>
-          <article className={styles.panel} data-testid="chart-dependency-depth">
-            <div className={styles.panelHead}>
-              <div className={styles.panelHeadText}>
-                <h3 className={styles.panelTitle}>{s.depthTitle}</h3>
-                <p className={styles.panelHint}>{s.depthHint}</p>
-              </div>
-              <div className={styles.segmented} role="group" aria-label={s.depthTitle}>
-                <button
-                  type="button"
-                  className={styles.segmentBtn}
-                  aria-pressed={depthMode === "modules"}
-                  onClick={() => setDepthMode("modules")}
-                >
-                  {s.depthModeModules}
-                </button>
-                <button
-                  type="button"
-                  className={styles.segmentBtn}
-                  aria-pressed={depthMode === "distribution"}
-                  onClick={() => setDepthMode("distribution")}
-                >
-                  {s.depthModeDistribution}
-                </button>
-              </div>
-            </div>
-
-            {metrics.dependencyNodes.length === 0 ? (
-              <p className={styles.emptyBody}>{s.emptyProject}</p>
-            ) : depthMode === "modules" ? (
-              <div className={styles.chartBox}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={moduleDepthData}
-                    layout="vertical"
-                    margin={{ top: 4, right: 20, bottom: 4, left: 4 }}
-                  >
-                    <CartesianGrid stroke="#2f2d26" horizontal={false} />
-                    <XAxis
-                      type="number"
-                      domain={[0, (dataMax: number) => Math.max(2, dataMax)]}
-                      allowDecimals={false}
-                      stroke="#807d72"
-                      tick={{ fill: "#a7a396", fontSize: 12 }}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="displayLabel"
-                      width={126}
-                      stroke="#807d72"
-                      tick={{ fill: "#e9e7df", fontSize: 11 }}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
-                      content={({ active, payload }) => {
-                        const raw = payload?.[0]?.payload;
-                        if (!active || !raw) return null;
-                        const node = raw as ComponentDependencyNode;
-                        return (
-                          <div className={styles.tooltip}>
-                            <p className={styles.tooltipTitle}>{node.path}</p>
-                            <p className={styles.tooltipRow}>
-                              <span>{s.depthLevelLabel}</span>
-                              <span className={styles.tooltipNum}>L{node.depth}</span>
-                            </p>
-                            <p className={styles.tooltipRow}>
-                              <span>{s.depthDirectDeps}</span>
-                              <span className={styles.tooltipNum}>
-                                {node.directLocalDeps.length}
-                              </span>
-                            </p>
-                            <p className={styles.tooltipRow}>
-                              <span>{s.depthExternalDeps}</span>
-                              <span className={styles.tooltipNum}>
-                                {node.externalDeps.length}
-                              </span>
-                            </p>
-                            <p className={styles.tooltipRow}>
-                              <span>{s.depthDependents}</span>
-                              <span className={styles.tooltipNum}>{node.dependentsCount}</span>
-                            </p>
-                            {node.hasCycle ? (
-                              <p className={styles.tooltipWarn}>{s.depthCycleFlag}</p>
-                            ) : null}
-                          </div>
-                        );
-                      }}
-                    />
-                    <Bar
-                      dataKey="depth"
-                      name={s.depthLevelLabel}
-                      radius={[0, 6, 6, 0]}
-                      barSize={18}
-                      isAnimationActive={false}
-                      onClick={(_entry, index) => {
-                        const node = moduleDepthData[index];
-                        if (node) onOpenFile(node.path);
-                      }}
-                    >
-                      {moduleDepthData.map((entry) => (
-                        <Cell
-                          key={entry.path}
-                          fill={
-                            entry.hasCycle
-                              ? "#d97706"
-                              : entry.depth >= 2
-                                ? AI_COLOR
-                                : entry.depth === 1
-                                  ? "#dfa88f"
-                                  : "#5d5a4f"
-                          }
-                          style={{ cursor: "pointer" }}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className={styles.chartBox}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={metrics.depthDistribution}
-                    margin={{ top: 10, right: 16, bottom: 4, left: 0 }}
-                  >
-                    <CartesianGrid stroke="#2f2d26" vertical={false} />
-                    <XAxis
-                      dataKey="label"
-                      stroke="#807d72"
-                      tick={{ fill: "#a7a396", fontSize: 12 }}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      stroke="#807d72"
-                      tick={{ fill: "#a7a396", fontSize: 12 }}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
-                      content={({ active, payload }) => {
-                        const raw = payload?.[0]?.payload;
-                        if (!active || !raw) return null;
-                        const bucket = raw as DepthDistributionBucket;
-                        return (
-                          <div className={styles.tooltip}>
-                            <p className={styles.tooltipTitle}>
-                              {s.depthLevelLabel} {bucket.depth}
-                            </p>
-                            <p className={styles.tooltipRow}>
-                              <span>{s.depthModulesCount}</span>
-                              <span className={styles.tooltipNum}>{bucket.count}</span>
-                            </p>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Bar
-                      dataKey="count"
-                      name={s.depthModulesCount}
-                      fill={AI_COLOR}
-                      radius={[4, 4, 0, 0]}
-                      barSize={32}
-                      isAnimationActive={false}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </article>
-
-          <article className={styles.panel} data-testid="chart-ai-vs-manual">
+        <MagicCard as="article" className={styles.panel} data-testid="chart-files-changed">
+          <div className={styles.panelInner}>
             <div className={styles.panelHead}>
               <div>
-                <h3 className={styles.panelTitle}>{s.authorshipTitle}</h3>
-                <p className={styles.panelHint}>{s.authorshipHint}</p>
+                <h3 className={styles.panelTitle}>{s.timelineTitle}</h3>
+                <p className={styles.panelHint}>{s.timelineHint}</p>
+              </div>
+              <div className={styles.seriesLegend}>
+                {activityFilter !== "ai" ? (
+                  <span className={styles.seriesLegendItem}>
+                    <span
+                      className={styles.swatch}
+                      style={{ background: MANUAL_COLOR }}
+                      aria-hidden="true"
+                    />
+                    {s.seriesManual}
+                  </span>
+                ) : null}
+                {activityFilter !== "manual" ? (
+                  <span className={styles.seriesLegendItem}>
+                    <span
+                      className={styles.swatch}
+                      style={{ background: AI_COLOR }}
+                      aria-hidden="true"
+                    />
+                    {s.seriesAi}
+                  </span>
+                ) : null}
+                <span className={styles.seriesLegendItem}>
+                  <span
+                    className={styles.swatch}
+                    style={{ background: CUMULATIVE_COLOR }}
+                    aria-hidden="true"
+                  />
+                  {s.seriesCumulative}
+                </span>
               </div>
             </div>
+            <div className={styles.timelineChartBox}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={metrics.filesChangedTimeline}
+                  margin={{ top: 10, right: 16, bottom: 4, left: 0 }}
+                >
+                  <CartesianGrid stroke="rgba(255, 255, 255, 0.06)" vertical={false} />
+                  <XAxis
+                    dataKey="shortLabel"
+                    stroke="rgba(255, 255, 255, 0.14)"
+                    tick={{ fill: "#9e9eab", fontSize: 12 }}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    stroke="rgba(255, 255, 255, 0.14)"
+                    tick={{ fill: "#9e9eab", fontSize: 12 }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
+                    content={({ active, payload }) => {
+                      const raw = payload?.[0]?.payload;
+                      if (!active || !raw) return null;
+                      const pt = raw as ChangeTimelinePoint;
+                      return (
+                        <div className={styles.tooltip}>
+                          <p className={styles.tooltipTitle}>{pt.label}</p>
+                          <p className={styles.tooltipRow}>
+                            <span>{s.seriesTotalChanged}</span>
+                            <span className={styles.tooltipNum}>{pt.filesChanged}</span>
+                          </p>
+                          <p className={styles.tooltipRow}>
+                            <span>{s.seriesManual}</span>
+                            <span className={styles.tooltipNum}>{pt.manualChanged}</span>
+                          </p>
+                          <p className={styles.tooltipRow}>
+                            <span>{s.seriesAi}</span>
+                            <span className={styles.tooltipNum}>{pt.aiChanged}</span>
+                          </p>
+                          <p className={styles.tooltipRow}>
+                            <span>{s.seriesCumulative}</span>
+                            <span className={styles.tooltipNum}>{pt.cumulativeChanges}</span>
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="cumulativeChanges"
+                    name={s.seriesCumulative}
+                    stroke={CUMULATIVE_COLOR}
+                    fill={CUMULATIVE_COLOR}
+                    fillOpacity={0.14}
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                  />
+                  {activityFilter !== "ai" ? (
+                    <Bar
+                      dataKey="manualChanged"
+                      name={s.seriesManual}
+                      stackId="changes"
+                      fill={MANUAL_COLOR}
+                      radius={[3, 3, 0, 0]}
+                      barSize={22}
+                      isAnimationActive={false}
+                    />
+                  ) : null}
+                  {activityFilter !== "manual" ? (
+                    <Bar
+                      dataKey="aiChanged"
+                      name={s.seriesAi}
+                      stackId="changes"
+                      fill={AI_COLOR}
+                      radius={[3, 3, 0, 0]}
+                      barSize={22}
+                      isAnimationActive={false}
+                    />
+                  ) : null}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </MagicCard>
 
-            {metrics.summary.totalFiles === 0 ? (
-              <p className={styles.emptyBody}>{s.emptyProject}</p>
-            ) : (
-              <div className={styles.authorshipLayout}>
-                <div className={styles.donutWrap}>
+        <div className={styles.twoColGrid}>
+          <MagicCard as="article" className={styles.panel} data-testid="chart-dependency-depth">
+            <div className={styles.panelInner}>
+              <div className={styles.panelHead}>
+                <div className={styles.panelHeadText}>
+                  <h3 className={styles.panelTitle}>{s.depthTitle}</h3>
+                  <p className={styles.panelHint}>{s.depthHint}</p>
+                </div>
+                <SegmentedControl
+                  ariaLabel={s.depthTitle}
+                  value={depthMode}
+                  onChange={setDepthMode}
+                  items={[
+                    { value: "modules", label: s.depthModeModules },
+                    { value: "distribution", label: s.depthModeDistribution },
+                  ]}
+                />
+              </div>
+
+              {metrics.dependencyNodes.length === 0 ? (
+                <p className={styles.emptyBody}>{s.emptyProject}</p>
+              ) : depthMode === "modules" ? (
+                <div className={styles.chartBox}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={authorshipPieData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={58}
-                        outerRadius={88}
-                        paddingAngle={hasMultipleSlices ? 2 : 0}
-                        stroke={hasMultipleSlices ? "#24231e" : "none"}
-                        strokeWidth={hasMultipleSlices ? 2 : 0}
-                        isAnimationActive={false}
-                      >
-                        {authorshipPieData.map((entry) => (
-                          <Cell key={entry.key} fill={entry.color} />
-                        ))}
-                      </Pie>
+                    <BarChart
+                      data={moduleDepthData}
+                      layout="vertical"
+                      margin={{ top: 4, right: 20, bottom: 4, left: 4 }}
+                    >
+                      <CartesianGrid stroke="rgba(255, 255, 255, 0.06)" horizontal={false} />
+                      <XAxis
+                        type="number"
+                        domain={[0, (dataMax: number) => Math.max(2, dataMax)]}
+                        allowDecimals={false}
+                        stroke="rgba(255, 255, 255, 0.14)"
+                        tick={{ fill: "#9e9eab", fontSize: 12 }}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="displayLabel"
+                        width={126}
+                        stroke="rgba(255, 255, 255, 0.14)"
+                        tick={{ fill: "#d4d4dc", fontSize: 11 }}
+                      />
                       <Tooltip
+                        cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
                         content={({ active, payload }) => {
                           const raw = payload?.[0]?.payload;
                           if (!active || !raw) return null;
-                          const slice = raw as { name: string; value: number; pct: number };
+                          const node = raw as ComponentDependencyNode;
                           return (
                             <div className={styles.tooltip}>
-                              <p className={styles.tooltipTitle}>{slice.name}</p>
+                              <p className={styles.tooltipTitle}>{node.path}</p>
                               <p className={styles.tooltipRow}>
-                                <span>{s.colLines}</span>
+                                <span>{s.depthLevelLabel}</span>
+                                <span className={styles.tooltipNum}>L{node.depth}</span>
+                              </p>
+                              <p className={styles.tooltipRow}>
+                                <span>{s.depthDirectDeps}</span>
                                 <span className={styles.tooltipNum}>
-                                  {slice.value.toLocaleString()} ({slice.pct}%)
+                                  {node.directLocalDeps.length}
                                 </span>
+                              </p>
+                              <p className={styles.tooltipRow}>
+                                <span>{s.depthExternalDeps}</span>
+                                <span className={styles.tooltipNum}>
+                                  {node.externalDeps.length}
+                                </span>
+                              </p>
+                              <p className={styles.tooltipRow}>
+                                <span>{s.depthDependents}</span>
+                                <span className={styles.tooltipNum}>{node.dependentsCount}</span>
+                              </p>
+                              {node.hasCycle ? (
+                                <p className={styles.tooltipWarn}>{s.depthCycleFlag}</p>
+                              ) : null}
+                            </div>
+                          );
+                        }}
+                      />
+                      <Bar
+                        dataKey="depth"
+                        name={s.depthLevelLabel}
+                        radius={[0, 6, 6, 0]}
+                        barSize={18}
+                        isAnimationActive={false}
+                        onClick={(_entry, index) => {
+                          const node = moduleDepthData[index];
+                          if (node) onOpenFile(node.path);
+                        }}
+                      >
+                        {moduleDepthData.map((entry) => (
+                          <Cell
+                            key={entry.path}
+                            fill={
+                              entry.hasCycle
+                                ? "#f59e0b"
+                                : entry.depth >= 2
+                                  ? AI_COLOR
+                                  : entry.depth === 1
+                                    ? "#fb923c"
+                                    : "#525260"
+                            }
+                            style={{ cursor: "pointer" }}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className={styles.chartBox}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={metrics.depthDistribution}
+                      margin={{ top: 10, right: 16, bottom: 4, left: 0 }}
+                    >
+                      <CartesianGrid stroke="rgba(255, 255, 255, 0.06)" vertical={false} />
+                      <XAxis
+                        dataKey="label"
+                        stroke="rgba(255, 255, 255, 0.14)"
+                        tick={{ fill: "#9e9eab", fontSize: 12 }}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        stroke="rgba(255, 255, 255, 0.14)"
+                        tick={{ fill: "#9e9eab", fontSize: 12 }}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
+                        content={({ active, payload }) => {
+                          const raw = payload?.[0]?.payload;
+                          if (!active || !raw) return null;
+                          const bucket = raw as DepthDistributionBucket;
+                          return (
+                            <div className={styles.tooltip}>
+                              <p className={styles.tooltipTitle}>
+                                {s.depthLevelLabel} {bucket.depth}
+                              </p>
+                              <p className={styles.tooltipRow}>
+                                <span>{s.depthModulesCount}</span>
+                                <span className={styles.tooltipNum}>{bucket.count}</span>
                               </p>
                             </div>
                           );
                         }}
                       />
-                    </PieChart>
+                      <Bar
+                        dataKey="count"
+                        name={s.depthModulesCount}
+                        fill={AI_COLOR}
+                        radius={[4, 4, 0, 0]}
+                        barSize={32}
+                        isAnimationActive={false}
+                      />
+                    </BarChart>
                   </ResponsiveContainer>
-                  <div className={styles.donutCenter}>
-                    <span className={styles.donutTotal}>{metrics.authorship.aiPct}%</span>
-                    <span className={styles.donutUnit}>{s.aiGenerated}</span>
-                  </div>
                 </div>
+              )}
+            </div>
+          </MagicCard>
 
-                <div className={styles.authorshipStats}>
-                  <div className={styles.authorshipRow}>
-                    <div className={styles.authorshipRowTop}>
-                      <span className={styles.authorshipName}>
-                        <span
-                          className={styles.swatch}
-                          style={{ background: AI_COLOR }}
-                          aria-hidden="true"
-                        />
-                        {s.aiGenerated}
-                      </span>
-                      <span className={styles.authorshipPct}>{metrics.authorship.aiPct}%</span>
-                    </div>
-                    <div className={styles.miniTrack} aria-hidden="true">
-                      <div
-                        className={styles.miniFill}
-                        style={{ width: `${metrics.authorship.aiPct}%`, background: AI_COLOR }}
-                      />
-                    </div>
-                    <p className={styles.authorshipSub}>
-                      <span>
-                        {metrics.authorship.aiLines.toLocaleString()} {s.linesUnit}
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span>
-                        {metrics.authorship.aiFiles} {s.filesUnit}
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span>
-                        {metrics.authorship.aiEdits} {s.editsUnit}
-                      </span>
-                    </p>
-                  </div>
-
-                  <div className={styles.authorshipRow}>
-                    <div className={styles.authorshipRowTop}>
-                      <span className={styles.authorshipName}>
-                        <span
-                          className={styles.swatch}
-                          style={{ background: MANUAL_COLOR }}
-                          aria-hidden="true"
-                        />
-                        {s.manualCode}
-                      </span>
-                      <span className={styles.authorshipPct}>{metrics.authorship.manualPct}%</span>
-                    </div>
-                    <div className={styles.miniTrack} aria-hidden="true">
-                      <div
-                        className={styles.miniFill}
-                        style={{
-                          width: `${metrics.authorship.manualPct}%`,
-                          background: MANUAL_COLOR,
-                        }}
-                      />
-                    </div>
-                    <p className={styles.authorshipSub}>
-                      <span>
-                        {metrics.authorship.manualLines.toLocaleString()} {s.linesUnit}
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span>
-                        {metrics.authorship.manualFiles} {s.filesUnit}
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span>
-                        {metrics.authorship.manualEdits} {s.editsUnit}
-                      </span>
-                    </p>
-                  </div>
+          <MagicCard as="article" className={styles.panel} data-testid="chart-ai-vs-manual">
+            <div className={styles.panelInner}>
+              <div className={styles.panelHead}>
+                <div>
+                  <h3 className={styles.panelTitle}>{s.authorshipTitle}</h3>
+                  <p className={styles.panelHint}>{s.authorshipHint}</p>
                 </div>
               </div>
-            )}
-          </article>
+
+              {metrics.summary.totalFiles === 0 ? (
+                <p className={styles.emptyBody}>{s.emptyProject}</p>
+              ) : (
+                <div className={styles.authorshipLayout}>
+                  <div className={styles.donutWrap}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={authorshipPieData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={58}
+                          outerRadius={88}
+                          paddingAngle={hasMultipleSlices ? 2 : 0}
+                          stroke={hasMultipleSlices ? "#111115" : "none"}
+                          strokeWidth={hasMultipleSlices ? 2 : 0}
+                          isAnimationActive={false}
+                        >
+                          {authorshipPieData.map((entry) => (
+                            <Cell key={entry.key} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            const raw = payload?.[0]?.payload;
+                            if (!active || !raw) return null;
+                            const slice = raw as { name: string; value: number; pct: number };
+                            return (
+                              <div className={styles.tooltip}>
+                                <p className={styles.tooltipTitle}>{slice.name}</p>
+                                <p className={styles.tooltipRow}>
+                                  <span>{s.colLines}</span>
+                                  <span className={styles.tooltipNum}>
+                                    {slice.value.toLocaleString()} ({slice.pct}%)
+                                  </span>
+                                </p>
+                              </div>
+                            );
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className={styles.donutCenter}>
+                      <span className={styles.donutTotal}>
+                        <NumberTicker value={metrics.authorship.aiPct} suffix="%" />
+                      </span>
+                      <span className={styles.donutUnit}>{s.aiGenerated}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.authorshipStats}>
+                    <div className={styles.authorshipRow}>
+                      <div className={styles.authorshipRowTop}>
+                        <span className={styles.authorshipName}>
+                          <span
+                            className={styles.swatch}
+                            style={{ background: AI_COLOR }}
+                            aria-hidden="true"
+                          />
+                          {s.aiGenerated}
+                        </span>
+                        <span className={styles.authorshipPct}>{metrics.authorship.aiPct}%</span>
+                      </div>
+                      <div className={styles.miniTrack} aria-hidden="true">
+                        <div
+                          className={styles.miniFill}
+                          style={{ width: `${metrics.authorship.aiPct}%`, background: AI_COLOR }}
+                        />
+                      </div>
+                      <p className={styles.authorshipSub}>
+                        <span>
+                          {metrics.authorship.aiLines.toLocaleString()} {s.linesUnit}
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span>
+                          {metrics.authorship.aiFiles} {s.filesUnit}
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span>
+                          {metrics.authorship.aiEdits} {s.editsUnit}
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className={styles.authorshipRow}>
+                      <div className={styles.authorshipRowTop}>
+                        <span className={styles.authorshipName}>
+                          <span
+                            className={styles.swatch}
+                            style={{ background: MANUAL_COLOR }}
+                            aria-hidden="true"
+                          />
+                          {s.manualCode}
+                        </span>
+                        <span className={styles.authorshipPct}>
+                          {metrics.authorship.manualPct}%
+                        </span>
+                      </div>
+                      <div className={styles.miniTrack} aria-hidden="true">
+                        <div
+                          className={styles.miniFill}
+                          style={{
+                            width: `${metrics.authorship.manualPct}%`,
+                            background: MANUAL_COLOR,
+                          }}
+                        />
+                      </div>
+                      <p className={styles.authorshipSub}>
+                        <span>
+                          {metrics.authorship.manualLines.toLocaleString()} {s.linesUnit}
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span>
+                          {metrics.authorship.manualFiles} {s.filesUnit}
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span>
+                          {metrics.authorship.manualEdits} {s.editsUnit}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </MagicCard>
         </div>
 
-        <article className={styles.panel}>
-          <div className={styles.panelHead}>
-            <div>
-              <h3 className={styles.panelTitle}>{s.breakdownTitle}</h3>
-              <p className={styles.panelHint}>{s.breakdownHint}</p>
+        <MagicCard as="article" className={styles.panel}>
+          <div className={styles.panelInner}>
+            <div className={styles.panelHead}>
+              <div>
+                <h3 className={styles.panelTitle}>{s.breakdownTitle}</h3>
+                <p className={styles.panelHint}>{s.breakdownHint}</p>
+              </div>
             </div>
-          </div>
 
-          {metrics.dependencyNodes.length === 0 ? (
-            <p className={styles.emptyBody}>{s.emptyProject}</p>
-          ) : (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th scope="col">{s.colFile}</th>
-                    <th scope="col" className={styles.numCol}>
-                      {s.colDepth}
-                    </th>
-                    <th scope="col" className={styles.numCol}>
-                      {s.colLocalImports}
-                    </th>
-                    <th scope="col">{s.colOrigin}</th>
-                    <th scope="col" className={styles.numCol}>
-                      {s.colLines}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {metrics.dependencyNodes.map((node) => {
-                    const origin = authorshipByPath.get(node.path);
-                    const aiPct = origin?.aiPct ?? 0;
-                    const originLabel =
-                      origin?.dominant === "ai"
-                        ? s.aiGenerated
-                        : origin?.dominant === "mixed"
-                          ? `${s.mixedCode} (${aiPct}%)`
-                          : s.manualCode;
-                    return (
-                      <tr key={node.path}>
-                        <td>
-                          <button
-                            type="button"
-                            className={styles.fileRowButton}
-                            title={s.openInEditor}
-                            onClick={() => onOpenFile(node.path)}
-                          >
-                            {node.path}
-                            {node.hasCycle ? (
-                              <span className={styles.cycleText}>({s.depthCycleFlag})</span>
-                            ) : null}
-                          </button>
-                        </td>
-                        <td className={`${styles.cellPad} ${styles.numCol}`}>L{node.depth}</td>
-                        <td className={`${styles.cellPad} ${styles.numCol}`}>
-                          {node.directLocalDeps.length}
-                          {node.externalDeps.length > 0 ? ` + ${node.externalDeps.length}` : ""}
-                        </td>
-                        <td className={styles.cellPad}>
-                          <span className={styles.originCell}>
-                            <span className={styles.originBar} aria-hidden="true">
-                              <span style={{ width: `${aiPct}%`, background: AI_COLOR }} />
-                              <span
-                                style={{ width: `${100 - aiPct}%`, background: MANUAL_COLOR }}
-                              />
+            {metrics.dependencyNodes.length === 0 ? (
+              <p className={styles.emptyBody}>{s.emptyProject}</p>
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th scope="col">{s.colFile}</th>
+                      <th scope="col" className={styles.numCol}>
+                        {s.colDepth}
+                      </th>
+                      <th scope="col" className={styles.numCol}>
+                        {s.colLocalImports}
+                      </th>
+                      <th scope="col">{s.colOrigin}</th>
+                      <th scope="col" className={styles.numCol}>
+                        {s.colLines}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metrics.dependencyNodes.map((node) => {
+                      const origin = authorshipByPath.get(node.path);
+                      const aiPct = origin?.aiPct ?? 0;
+                      const originLabel =
+                        origin?.dominant === "ai"
+                          ? s.aiGenerated
+                          : origin?.dominant === "mixed"
+                            ? `${s.mixedCode} (${aiPct}%)`
+                            : s.manualCode;
+                      return (
+                        <tr key={node.path}>
+                          <td>
+                            <button
+                              type="button"
+                              className={styles.fileRowButton}
+                              title={s.openInEditor}
+                              onClick={() => onOpenFile(node.path)}
+                            >
+                              {node.path}
+                              {node.hasCycle ? (
+                                <span className={styles.cycleText}>({s.depthCycleFlag})</span>
+                              ) : null}
+                            </button>
+                          </td>
+                          <td className={`${styles.cellPad} ${styles.numCol}`}>L{node.depth}</td>
+                          <td className={`${styles.cellPad} ${styles.numCol}`}>
+                            {node.directLocalDeps.length}
+                            {node.externalDeps.length > 0 ? ` + ${node.externalDeps.length}` : ""}
+                          </td>
+                          <td className={styles.cellPad}>
+                            <span className={styles.originCell}>
+                              <span className={styles.originBar} aria-hidden="true">
+                                <span style={{ width: `${aiPct}%`, background: AI_COLOR }} />
+                                <span
+                                  style={{ width: `${100 - aiPct}%`, background: MANUAL_COLOR }}
+                                />
+                              </span>
+                              {originLabel}
                             </span>
-                            {originLabel}
-                          </span>
-                        </td>
-                        <td className={`${styles.cellPad} ${styles.numCol}`}>
-                          {node.lines.toLocaleString()}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </article>
+                          </td>
+                          <td className={`${styles.cellPad} ${styles.numCol}`}>
+                            {node.lines.toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </MagicCard>
       </div>
     </section>
   );

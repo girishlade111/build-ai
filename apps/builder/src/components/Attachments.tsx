@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type DragEvent } from "react";
+import { Paperclip, X } from "lucide-react";
 import type { AttachmentCheck } from "../providers/capability";
 import type { Locale } from "@ladestack/i18n";
 import {
@@ -93,7 +94,7 @@ export function AttachmentList({
                 aria-label={t.remove.replace("{name}", x.name)}
                 onClick={() => at.remove(i)}
               >
-                ×
+                <X size={13} aria-hidden="true" />
               </button>
             </li>
           ))}
@@ -146,7 +147,8 @@ export function AttachButton({ at, disabled }: { at: Attach; disabled?: boolean 
         onClick={() => input.current?.click()}
         disabled={disabled}
       >
-        {at.t.attach}
+        <Paperclip size={14} aria-hidden="true" />
+        <span>{at.t.attach}</span>
       </button>
     </>
   );
