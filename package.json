@@ -12,10 +12,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "npm run dev --workspace=apps/builder",
+    "dev": "node apps/builder/scripts/dev.mjs",
     "start": "npm run start --workspace=apps/builder",
     "dev:website": "npm run dev --workspace=apps/website",
-    "dev:builder": "npm run dev --workspace=apps/builder",
+    "dev:builder": "node apps/builder/scripts/dev.mjs",
     "build": "npm run build --workspace=apps/builder",
     "build:all": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
